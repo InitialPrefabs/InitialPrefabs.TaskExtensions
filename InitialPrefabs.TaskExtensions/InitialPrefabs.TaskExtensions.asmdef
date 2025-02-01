@@ -1,0 +1,14 @@
+{
+    "name": "InitialPrefabs.TaskExtensions",
+    "rootNamespace": "InitialPrefabs.TaskExtensions",
+    "references": [],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": true,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": true
+}

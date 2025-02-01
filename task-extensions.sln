@@ -1,8 +1,10 @@
-Microsoft Visual Studio Solution File, Format Version 12.00
+﻿Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InitialPrefabs.TaskExtensions", "InitialPrefabs.TaskExtensions\InitialPrefabs.TaskExtensions.csproj", "{FCA49E4B-3218-BB5F-E681-3F9983E15B06}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InitialPrefabs.TaskExtensions.Tests", "InitialPrefabs.TaskExtensions.Tests\InitialPrefabs.TaskExtensions.Tests.csproj", "{F6B1510E-878D-45A5-BADD-F93295DB140A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -14,6 +16,10 @@ Global
 		{FCA49E4B-3218-BB5F-E681-3F9983E15B06}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FCA49E4B-3218-BB5F-E681-3F9983E15B06}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FCA49E4B-3218-BB5F-E681-3F9983E15B06}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F6B1510E-878D-45A5-BADD-F93295DB140A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F6B1510E-878D-45A5-BADD-F93295DB140A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F6B1510E-878D-45A5-BADD-F93295DB140A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F6B1510E-878D-45A5-BADD-F93295DB140A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

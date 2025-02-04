@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Data;
 using System.Threading.Tasks;
 
 namespace InitialPrefabs.TaskExtensions {
@@ -13,13 +14,12 @@ namespace InitialPrefabs.TaskExtensions {
         }
 
         public TaskBuilder AppendTask<T>(ITaskParallelFor taskParallel, int start, int length) where T : struct, ITaskParallelFor {
-            for (var i = 0; i < length; i++) {
-                var offset = start + i;
-                var task = Task.Factory.StartNew(() => {
-                    taskParallel.Execute(offset);
-                });
-                QueuedTasks.Add(task);
-            }
+            var task = Task.Factory.StartNew(() => {
+                for (var i = 0; i < length; i++) {
+                    taskParallel.Execute(i + start);
+                }
+            });
+            QueuedTasks.Add(task);
             return this;
         }
 

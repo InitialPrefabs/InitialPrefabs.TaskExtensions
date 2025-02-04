@@ -4,13 +4,15 @@ using System.Threading.Tasks;
 namespace InitialPrefabs.TaskExtensions {
 
     public static class TaskHelper {
-        private static readonly List<Task> QueuedTasks = new List<Task>(100);
+        // TODO: create a dynamic array instead
+        internal static readonly List<Task> QueuedTasks = new List<Task>(100);
 
         public static TaskBuilder CreateTaskBuilder() {
             return new TaskBuilder(QueuedTasks);
         }
 
         public static void Flush() {
+            Task.WaitAll(QueuedTasks.ToArray());
             // TODO: Check the cancellation token status
             QueuedTasks.Clear();
         }

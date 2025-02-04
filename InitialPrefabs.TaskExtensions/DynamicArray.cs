@@ -16,6 +16,15 @@ namespace InitialPrefabs.TaskExtensions {
             count = 0;
         }
 
+        public T this[int i] {
+            get => Collection[i];
+            set => Collection[i] = value;
+        }
+
+        public ReadOnlySpan<T> AsReadOnlySpan() {
+            return new ReadOnlySpan<T>(Collection, 0, Count);
+        }
+
         public void Push(T value) {
             if (count >= Capacity) {
                 Array.Resize(ref Collection, Capacity + 1);

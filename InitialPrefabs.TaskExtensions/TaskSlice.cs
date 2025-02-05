@@ -1,16 +1,18 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace InitialPrefabs.TaskExtensions {
-    public struct TaskSlice : IEnumerable<Task> {
 
-        public readonly IReadOnlyList<Task> QueuedTasks;
+    /// <summary>
+    /// Represents a readonly slice of the <see cref="Task"/> from a <see cref="TaskBuilder"/>.
+    /// </summary>
+    public readonly struct TaskSlice : IEnumerable<Task> {
+        private readonly DynamicArray<Task> QueuedTasks;
+        private readonly int Start;
+        private readonly int Count;
 
-        public readonly int Start;
-        public readonly int Count;
-
-        public TaskSlice(TaskBuilder taskBuilder) {
+        internal TaskSlice(TaskBuilder taskBuilder) {
             Start = taskBuilder.StartOffset;
             Count = taskBuilder.TotalCount - Start;
             QueuedTasks = taskBuilder.QueuedTasks;

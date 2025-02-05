@@ -1,19 +1,23 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 
 namespace InitialPrefabs.TaskExtensions {
+
+    /// <summary>
+    /// Similar to a <see cref="List{T}"/> with an internal array. This avoids having to
+    /// construct an array via a list as we can access the <see cref="Collection"/>.
+    /// </summary>
     public class DynamicArray<T> : IEnumerable<T>, IReadOnlyList<T> {
         internal T[] Collection;
 
         public int Capacity => Collection.Length;
-        public int Count => count;
-
-        private int count;
+        public int Count { get; private set; }
 
         public DynamicArray(int capacity) {
             Collection = new T[capacity];
-            count = 0;
+            Count = 0;
         }
 
         public T this[int i] {
@@ -26,35 +30,40 @@ namespace InitialPrefabs.TaskExtensions {
         }
 
         public void Clear() {
-            count = 0;
+            Count = 0;
         }
 
         public void Push(T value) {
-            if (count >= Capacity) {
+            if (Count >= Capacity) {
                 Array.Resize(ref Collection, Capacity + 1);
             }
-            Collection[count++] = value;
+            Collection[Count++] = value;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void RemoveAtSwapback(int index) {
-            count--;
-            var last = Collection[count];
+            Count--;
+            var last = Collection[Count];
             Collection[index] = last;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void RemoveAt(int index) {
-            count--;
-            for (var i = index; i < count; i++) {
+            Count--;
+            for (var i = index; i < Count; i++) {
                 Collection[i] = Collection[i + 1];
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Resize(int capacity) {
-            Array.Resize(ref Collection, capacity);
+            if (Count >= Capacity) {
+                Array.Resize(ref Collection, capacity);
+            }
         }
 
         public IEnumerator<T> GetEnumerator() {
-            for (int i = 0; i < Count; i++) {
+            for (var i = 0; i < Count; i++) {
                 yield return Collection[i];
             }
         }

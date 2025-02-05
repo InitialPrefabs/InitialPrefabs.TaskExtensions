@@ -44,6 +44,9 @@ namespace InitialPrefabs.TaskExtensions.Tests {
             array.RemoveAtSwapback(0);
             Assert.That(array[0] == 10, "The last element should be swapped with the first element and removed.");
             Assert.That(array.Count == 9, "RemoveAtSwapback did not properly remove from an element");
+
+            array.RemoveAtSwapback(array.Count - 1);
+            Assert.That(array.Count == 8, "Swapback failed at the final element.");
         }
     }
 }

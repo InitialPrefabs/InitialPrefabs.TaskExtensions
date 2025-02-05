@@ -1,18 +1,17 @@
-using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace InitialPrefabs.TaskExtensions {
 
     public static class TaskHelper {
-        // TODO: create a dynamic array instead
-        internal static readonly List<Task> QueuedTasks = new List<Task>(100);
+        private const int InitialCapacity = 100;
+        internal static readonly DynamicArray<Task> QueuedTasks = new DynamicArray<Task>(InitialCapacity);
 
         public static TaskBuilder CreateTaskBuilder() {
             return new TaskBuilder(QueuedTasks);
         }
 
         public static void Flush() {
-            Task.WaitAll(QueuedTasks.ToArray());
+            // Task.WaitAll(QueuedTasks.Collection);
             // TODO: Check the cancellation token status
             QueuedTasks.Clear();
         }
@@ -25,7 +24,7 @@ namespace InitialPrefabs.TaskExtensions {
                 var start = i * workPerTask;
                 var diff = total - start;
                 var length = diff > workPerTask ? workPerTask : diff;
-                taskBuilder.AppendTask<T>(task, start, length);
+                taskBuilder.AppendParallelTask<T>(task, start, length);
             }
 
             return Task.WhenAll(taskBuilder.GetTasks());

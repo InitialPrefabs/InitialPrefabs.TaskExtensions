@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 
 namespace InitialPrefabs.TaskExtensions {
-    public class DynamicArray<T> : IEnumerable<T> {
+    public class DynamicArray<T> : IEnumerable<T>, IReadOnlyList<T> {
         internal T[] Collection;
 
         public int Capacity => Collection.Length;
@@ -23,6 +23,10 @@ namespace InitialPrefabs.TaskExtensions {
 
         public ReadOnlySpan<T> AsReadOnlySpan() {
             return new ReadOnlySpan<T>(Collection, 0, Count);
+        }
+
+        public void Clear() {
+            count = 0;
         }
 
         public void Push(T value) {

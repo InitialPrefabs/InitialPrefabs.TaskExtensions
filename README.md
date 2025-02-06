@@ -26,13 +26,17 @@ struct ParallelAddTask : ITaskParallelFor {
 }
 
 async void Example() {
+    TaskHelper.Flush(); // Flush all previously cached Tasks for the GC to collect.
     var a = new [] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 }; // The input array
     var b = new int[10]; // The output array
 
+    // Schedules 2 Tasks each processing 5 elements.
+    // If you have 9 elements, but delegate 5 units of work per task, then the last
+    // task will process 4 units.
     await new ParallelAddTask {
         a = a,
         b = b
-    }.Schedule(a.Length, 5);
+    }.Schedule(total: a.Length, workPerTask: 5);
 
     foreach (var element in b) {
         Console.WriteLine(element);

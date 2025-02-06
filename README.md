@@ -26,7 +26,9 @@ struct ParallelAddTask : ITaskParallelFor {
 }
 
 async void Example() {
-    TaskHelper.Flush(); // Flush all previously cached Tasks for the GC to collect.
+    // Flush all previously cached Tasks for the GC to collect.
+    // You only need to call Flush once per frame, do this in your app's control flow.
+    TaskHelper.Flush();
     var a = new [] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 }; // The input array
     var b = new int[10]; // The output array
 

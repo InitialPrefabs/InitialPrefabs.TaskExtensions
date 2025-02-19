@@ -1,4 +1,5 @@
 ﻿using NUnit.Framework;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace InitialPrefabs.TaskExtensions.Tests {
@@ -114,6 +115,15 @@ namespace InitialPrefabs.TaskExtensions.Tests {
                 var actual = a[i];
                 Assert.That(actual, Is.EqualTo(b[i] * 2), "Failed to add a separate thread.");
             }
+        }
+
+        [Test]
+        public async Task Foo() {
+            await TaskHandle.Run(static () => {
+                var a = 1;
+                Thread.Sleep(500);
+                Assert.That(a, Is.Not.EqualTo(1));
+            });
         }
     }
 }

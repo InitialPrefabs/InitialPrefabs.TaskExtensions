@@ -1,7 +1,8 @@
-using System;
+﻿using System;
 using System.Runtime.CompilerServices;
 
 namespace InitialPrefabs.TaskExtensions {
+
     public static class Utils {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

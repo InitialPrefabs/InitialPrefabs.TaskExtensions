@@ -3,13 +3,13 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 
 namespace InitialPrefabs.TaskFlow {
-    public class TaskHandleAwaiter : INotifyCompletion {
+    public class AwaitableTaskHandleAwaiter : INotifyCompletion {
         public bool IsCompleted => handle.IsCompleted;
 
         private AwaitableTaskHandle handle;
         public Action continuation;
 
-        public TaskHandleAwaiter(AwaitableTaskHandle handle) {
+        public AwaitableTaskHandleAwaiter(AwaitableTaskHandle handle) {
             this.handle = handle;
         }
 
@@ -74,7 +74,7 @@ namespace InitialPrefabs.TaskFlow {
             });
         }
 
-        public TaskHandleAwaiter GetAwaiter() => new TaskHandleAwaiter(this);
+        public AwaitableTaskHandleAwaiter GetAwaiter() => new AwaitableTaskHandleAwaiter(this);
 
         public static AwaitableTaskHandle Run(Action action) {
             var handle = new AwaitableTaskHandle(action);

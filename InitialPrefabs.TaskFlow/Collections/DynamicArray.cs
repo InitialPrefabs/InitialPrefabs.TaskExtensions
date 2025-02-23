@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
-namespace InitialPrefabs.TaskFlow {
+namespace InitialPrefabs.TaskFlow.Collections {
 
     /// <summary>
     /// Similar to a <see cref="List{T}"/> with an internal array. This avoids having to
@@ -18,6 +18,12 @@ namespace InitialPrefabs.TaskFlow {
         public DynamicArray(int capacity) {
             Collection = new T[capacity];
             Count = 0;
+        }
+
+        public DynamicArray(int capacity, T defaultValue) : this(capacity) {
+            foreach (ref var element in new Span<T>(Collection)) {
+                element = defaultValue;
+            }
         }
 
         public T this[int i] {

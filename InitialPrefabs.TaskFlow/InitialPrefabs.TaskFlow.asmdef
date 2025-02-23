@@ -1,6 +1,6 @@
 {
-    "name": "InitialPrefabs.TaskExtensions",
-    "rootNamespace": "InitialPrefabs.TaskExtensions",
+    "name": "InitialPrefabs.TaskFlow",
+    "rootNamespace": "InitialPrefabs.TaskFlow",
     "references": [],
     "includePlatforms": [],
     "excludePlatforms": [],

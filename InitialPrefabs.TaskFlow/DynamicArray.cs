@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
-namespace InitialPrefabs.TaskExtensions {
+namespace InitialPrefabs.TaskFlow {
 
     /// <summary>
     /// Similar to a <see cref="List{T}"/> with an internal array. This avoids having to

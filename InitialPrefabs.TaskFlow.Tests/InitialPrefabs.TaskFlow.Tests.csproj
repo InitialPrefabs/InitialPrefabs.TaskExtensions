@@ -17,7 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\InitialPrefabs.TaskExtensions\InitialPrefabs.TaskExtensions.csproj" />
+    <ProjectReference Include="..\InitialPrefabs.TaskFlow\InitialPrefabs.TaskFlow.csproj" />
   </ItemGroup>
 
 </Project>

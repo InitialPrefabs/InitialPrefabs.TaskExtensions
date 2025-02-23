@@ -1,4 +1,4 @@
-﻿namespace InitialPrefabs.TaskExtensions {
+﻿namespace InitialPrefabs.TaskFlow {
 
     /// <summary>
     /// Represents a unit of work that needs to be executed among many threads.

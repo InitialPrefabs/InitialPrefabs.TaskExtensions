@@ -2,15 +2,14 @@
 using System.Runtime.CompilerServices;
 using System.Threading;
 
-namespace InitialPrefabs.TaskExtensions {
-
+namespace InitialPrefabs.TaskFlow {
     public class TaskHandleAwaiter : INotifyCompletion {
         public bool IsCompleted => handle.IsCompleted;
 
-        private TaskHandle handle;
+        private AwaitableTaskHandle handle;
         public Action continuation;
 
-        public TaskHandleAwaiter(TaskHandle handle) {
+        public TaskHandleAwaiter(AwaitableTaskHandle handle) {
             this.handle = handle;
         }
 
@@ -36,7 +35,7 @@ namespace InitialPrefabs.TaskExtensions {
         }
     }
 
-    public class TaskHandle {
+    public class AwaitableTaskHandle {
         public Action Continuation;
         private Action action;
         private ManualResetEvent waitHandle;
@@ -45,7 +44,7 @@ namespace InitialPrefabs.TaskExtensions {
         public bool IsCompleted { get; private set; }
         public bool IsFaulted => Err != null;
 
-        public TaskHandle(Action action) {
+        public AwaitableTaskHandle(Action action) {
             this.action = action;
             waitHandle = new ManualResetEvent(false);
         }
@@ -77,8 +76,8 @@ namespace InitialPrefabs.TaskExtensions {
 
         public TaskHandleAwaiter GetAwaiter() => new TaskHandleAwaiter(this);
 
-        public static TaskHandle Run(Action action) {
-            var handle = new TaskHandle(action);
+        public static AwaitableTaskHandle Run(Action action) {
+            var handle = new AwaitableTaskHandle(action);
             handle.Start();
             return handle;
         }

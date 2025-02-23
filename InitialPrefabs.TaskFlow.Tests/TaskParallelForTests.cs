@@ -2,7 +2,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace InitialPrefabs.TaskExtensions.Tests {
+namespace InitialPrefabs.TaskFlow.Tests {
 
     public class TaskParallelForTests {
 
@@ -119,7 +119,7 @@ namespace InitialPrefabs.TaskExtensions.Tests {
 
         [Test]
         public async Task Foo() {
-            await TaskHandle.Run(static () => {
+            await AwaitableTaskHandle.Run(static () => {
                 var a = 1;
                 Thread.Sleep(500);
                 Assert.That(a, Is.Not.EqualTo(1));

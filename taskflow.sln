@@ -2,9 +2,9 @@
 # Visual Studio Version 17
 VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InitialPrefabs.TaskExtensions", "InitialPrefabs.TaskExtensions\InitialPrefabs.TaskExtensions.csproj", "{FCA49E4B-3218-BB5F-E681-3F9983E15B06}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InitialPrefabs.TaskFlow", "InitialPrefabs.TaskFlow\InitialPrefabs.TaskFlow.csproj", "{FCA49E4B-3218-BB5F-E681-3F9983E15B06}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InitialPrefabs.TaskExtensions.Tests", "InitialPrefabs.TaskExtensions.Tests\InitialPrefabs.TaskExtensions.Tests.csproj", "{F6B1510E-878D-45A5-BADD-F93295DB140A}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InitialPrefabs.TaskFlow.Tests", "InitialPrefabs.TaskFlow.Tests\InitialPrefabs.TaskFlow.Tests.csproj", "{F6B1510E-878D-45A5-BADD-F93295DB140A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

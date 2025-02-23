@@ -1,6 +1,6 @@
 ﻿using System.Threading.Tasks;
 
-namespace InitialPrefabs.TaskExtensions {
+namespace InitialPrefabs.TaskFlow {
 
     public static class TaskHelper {
         private const int InitialCapacity = 100;

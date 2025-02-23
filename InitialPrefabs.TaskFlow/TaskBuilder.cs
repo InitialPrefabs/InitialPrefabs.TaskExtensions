@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace InitialPrefabs.TaskExtensions {
+namespace InitialPrefabs.TaskFlow {
     public readonly struct TaskBuilder {
         internal readonly DynamicArray<Task> QueuedTasks;
 

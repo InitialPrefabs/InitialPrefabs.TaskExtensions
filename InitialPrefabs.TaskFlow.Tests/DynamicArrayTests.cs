@@ -1,6 +1,6 @@
-using NUnit.Framework;
+﻿using NUnit.Framework;
 
-namespace InitialPrefabs.TaskExtensions.Tests {
+namespace InitialPrefabs.TaskFlow.Tests {
     public class DynamicArrayTests {
 
         [Test]

@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace InitialPrefabs.TaskExtensions {
+namespace InitialPrefabs.TaskFlow {
 
     /// <summary>
     /// Represents a readonly slice of the <see cref="Task"/> from a <see cref="TaskBuilder"/>.

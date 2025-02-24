@@ -1,41 +1,13 @@
-﻿using System;
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 
 namespace InitialPrefabs.TaskFlow.Collections {
-
-    public class FixedPool<T> {
-        private readonly DynamicArray<T> data;
-        private readonly DynamicArray<ushort> freeIndices;
-
-        public FixedPool(int capacity, T defaultValue) {
-            data = new DynamicArray<T>(capacity);
-            freeIndices = new DynamicArray<ushort>(capacity);
-
-            for (ushort i = 0; i < capacity; i++) {
-                data.Add(defaultValue);
-                freeIndices.Add(i);
-            }
-        }
-
-        public (int handle, T value) Rent() {
-            if (freeIndices.Count > 0) {
-                var last = freeIndices.Count - 1;
-                var freeIndex = freeIndices[last];
-                freeIndices.RemoveAtSwapback(last);
-                return (freeIndex, data[last]);
-            } else {
-                throw new InvalidOperationException("Exceeded rentable capacity, you need to allocate a new buffer or return an existing element.");
-            }
-        }
-    }
 
     public class SparseSet<T> : IEnumerable<T> {
 
         private readonly DynamicArray<T> dense;
         private readonly DynamicArray<int> sparse;
         private readonly DynamicArray<int> denseToSparse;
-        private readonly DynamicArray<int> freeIndices;
 
         public int Count => dense.Count;
 

@@ -39,7 +39,7 @@ namespace InitialPrefabs.TaskFlow.Collections {
             Count = 0;
         }
 
-        public void Push(T value) {
+        public void Add(T value) {
             if (Count >= Capacity) {
                 Array.Resize(ref Collection, Capacity + 1);
             }

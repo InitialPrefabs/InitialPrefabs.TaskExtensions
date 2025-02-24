@@ -1,6 +1,10 @@
-﻿namespace InitialPrefabs.TaskFlow {
-    public static class TaskDependencyGraph {
+﻿using InitialPrefabs.TaskFlow.Collections;
 
+namespace InitialPrefabs.TaskFlow {
+    public class TaskPool {
+    }
+
+    public struct TaskHandle {
     }
 }
 

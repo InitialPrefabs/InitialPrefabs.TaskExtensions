@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 
 namespace InitialPrefabs.TaskFlow {
+
     public class AwaitableTaskHandleAwaiter : INotifyCompletion {
         public bool IsCompleted => handle.IsCompleted;
 

@@ -14,6 +14,7 @@ namespace InitialPrefabs.TaskFlow {
             StartOffset = queue.Count;
         }
 
+        /*
         public readonly TaskBuilder AppendParallelTask<T>(ITaskParallelFor taskParallel, int start, int length) where T : struct, ITaskParallelFor {
             var task = Task.Factory.StartNew(() => {
                 for (var i = 0; i < length; i++) {
@@ -30,6 +31,7 @@ namespace InitialPrefabs.TaskFlow {
             QueuedTasks.Push(scheduledTask);
             return this;
         }
+        */
 
         public IEnumerable<Task> GetTasks() {
             return new TaskSlice(this);
@@ -41,7 +43,7 @@ namespace InitialPrefabs.TaskFlow {
             for (var i = TotalCount - 1; i >= StartOffset; i--) {
                 QueuedTasks.RemoveAtSwapback(i);
             }
-            QueuedTasks.Push(combined);
+            QueuedTasks.Add(combined);
             return combined;
         }
     }

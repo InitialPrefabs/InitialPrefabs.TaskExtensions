@@ -16,7 +16,8 @@ namespace InitialPrefabs.TaskFlow {
             QueuedTasks.Clear();
         }
 
-        public static Task Schedule<T>(this T task, int total, int workPerTask) where T : struct, ITaskParallelFor {
+        /*
+        public static Task Schedule<T>(this T task, int total, int workPerTask) where T : struct, ITaskFor {
             var taskBuilder = new TaskBuilder(QueuedTasks);
 
             var unitsOfWork = Utils.CeilToIntDivision(total, workPerTask);
@@ -29,11 +30,14 @@ namespace InitialPrefabs.TaskFlow {
 
             return taskBuilder.FlattenDependencies();
         }
+        */
 
+        /*
         public static Task Schedule<T>(this T task) where T : struct, ITask {
             _ = new TaskBuilder(QueuedTasks)
                 .AppendTask<T>(task, out var scheduled);
             return scheduled;
         }
+        */
     }
 }

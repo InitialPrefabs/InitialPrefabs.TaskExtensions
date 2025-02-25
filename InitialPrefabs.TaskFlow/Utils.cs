@@ -14,5 +14,10 @@ namespace InitialPrefabs.TaskFlow {
 #endif
             return (numerator + denominator - 1) / denominator;
         }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int Min(int a, int b) {
+            return a < b ? a : b;
+        }
     }
 }

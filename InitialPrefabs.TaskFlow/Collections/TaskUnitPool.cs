@@ -12,7 +12,7 @@ namespace InitialPrefabs.TaskFlow.Collections {
         }
     }
 
-    public static class TaskPool<T0> where T0 : struct, ITaskFor {
+    public static class TaskUnitPool<T0> where T0 : struct, ITaskFor {
 
         internal static readonly DynamicArray<T0> Tasks;
         internal static readonly DynamicArray<ushort> FreeIndices;
@@ -20,7 +20,7 @@ namespace InitialPrefabs.TaskFlow.Collections {
         public static int Remaining => FreeIndices.Count;
         public static int Capacity => Tasks.Capacity;
 
-        static TaskPool() {
+        static TaskUnitPool() {
             var capacity = 5;
             Tasks = new DynamicArray<T0>(capacity);
             FreeIndices = new DynamicArray<ushort>(capacity);

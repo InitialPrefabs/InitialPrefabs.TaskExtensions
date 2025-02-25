@@ -66,7 +66,10 @@ namespace InitialPrefabs.TaskFlow.Collections {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void ForceResize(int capacity) {
-            Collection = new T[capacity];
+            var array = new T[capacity];
+            var length = Utils.Min(Collection.Length, capacity);
+            Array.Copy(Collection, array, length);
+            Collection = array;
         }
 
         public IEnumerator<T> GetEnumerator() {

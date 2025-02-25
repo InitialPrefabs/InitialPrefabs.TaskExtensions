@@ -36,7 +36,7 @@ namespace InitialPrefabs.TaskFlow.Collections.Tests {
             }
             Assert.That(array.Capacity, Is.EqualTo(11), "Capacity was not resized during the push operation");
 
-            array.Resize(20);
+            array.ForceResize(20);
             Assert.That(array.Capacity, Is.EqualTo(20), "Resize operation was not valid");
 
             array.RemoveAt(0);

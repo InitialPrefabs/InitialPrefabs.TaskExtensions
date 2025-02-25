@@ -13,7 +13,9 @@ namespace InitialPrefabs.TaskFlow.Collections {
         internal T[] Collection;
 
         public int Capacity => Collection.Length;
-        public int Count { get; private set; }
+        public bool IsEmpty => Count == 0;
+
+        public int Count { get; internal set; }
 
         public DynamicArray(int capacity) {
             Collection = new T[capacity];
@@ -35,6 +37,7 @@ namespace InitialPrefabs.TaskFlow.Collections {
             return new ReadOnlySpan<T>(Collection, 0, Count);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Clear() {
             Count = 0;
         }
@@ -62,10 +65,8 @@ namespace InitialPrefabs.TaskFlow.Collections {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Resize(int capacity) {
-            if (Count >= Capacity) {
-                Array.Resize(ref Collection, capacity);
-            }
+        public void ForceResize(int capacity) {
+            Collection = new T[capacity];
         }
 
         public IEnumerator<T> GetEnumerator() {

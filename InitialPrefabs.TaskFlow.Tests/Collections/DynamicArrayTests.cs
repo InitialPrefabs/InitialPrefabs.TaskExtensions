@@ -1,6 +1,14 @@
 ﻿using NUnit.Framework;
+using System;
 
 namespace InitialPrefabs.TaskFlow.Collections.Tests {
+    public class FixedArray32Tests {
+
+        [Test]
+        public void FixedArrayTests() {
+        }
+    }
+
     public class DynamicArrayTests {
 
         [Test]

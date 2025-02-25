@@ -12,6 +12,11 @@ namespace InitialPrefabs.TaskFlow.Collections {
         }
     }
 
+    /// <summary>
+    /// Stores structs implement <see cref="ITaskFor"/> to avoid boxing on runtime.
+    /// When <see cref="Rent"/> is called, a <see cref="Handle{T0}"/> is returned providing
+    /// the index of the <see cref="ITaskFor"/> struct.
+    /// </summary>
     public static class TaskUnitPool<T0> where T0 : struct, ITaskFor {
 
         internal static readonly DynamicArray<T0> Tasks;
@@ -31,6 +36,10 @@ namespace InitialPrefabs.TaskFlow.Collections {
             }
         }
 
+        /// <summary>
+        /// Returns an allocated struct implementing <see cref="ITaskFor"/> to be copied into,
+        /// </summary>
+        /// <returns>A <see cref="Handle{T0}"/> storing the index and Task container.</returns>
         public static Handle<T0> Rent() {
             if (FreeIndices.IsEmpty) {
                 var task = default(T0);

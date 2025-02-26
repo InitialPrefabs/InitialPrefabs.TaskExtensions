@@ -1,4 +1,5 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System;
+using System.Runtime.CompilerServices;
 
 namespace InitialPrefabs.TaskFlow.Collections {
 
@@ -58,6 +59,9 @@ namespace InitialPrefabs.TaskFlow.Collections {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void Return(Handle<T0> handle) {
             FreeIndices.Add(handle.Index);
+        }
+
+        public static void Peek(ushort index, Action<T0> action) {
         }
 
         public static void Reset() {

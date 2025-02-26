@@ -4,7 +4,7 @@ namespace InitialPrefabs.TaskFlow.Collections.Tests {
     public unsafe class FixedUInt16Array32Tests {
 
         [Test]
-        public void AddTests() {
+        public void AddTest() {
             var fixedArray = new FixedUInt16Array32();
             for (int i = FixedUInt16Array32.Capacity - 1; i >= 0; i--) {
                 fixedArray.Add((ushort)i);
@@ -16,7 +16,7 @@ namespace InitialPrefabs.TaskFlow.Collections.Tests {
         }
 
         [Test]
-        public void RemoveAtTests() {
+        public void RemoveAtTest() {
             var fixedArray = new FixedUInt16Array32();
             for (var i = 0; i < 10; i++) {
                 fixedArray.Add((ushort)i);
@@ -35,7 +35,7 @@ namespace InitialPrefabs.TaskFlow.Collections.Tests {
                 var array = new ushort[] { 0, 2, 3, 4, 5, 6, 7, 8, 9 };
 
                 for (var i = 0; i < array.Length; i++) {
-                    Assert.That(fixedArray[i], Is.EqualTo(array[i]), "Did not correctly remove rom the array");
+                    Assert.That(fixedArray[i], Is.EqualTo(array[i]), "Did not correctly remove from the array");
                 }
             });
         }

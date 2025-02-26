@@ -1,4 +1,7 @@
-﻿namespace InitialPrefabs.TaskFlow.Collections {
+﻿using System.Collections;
+using System.Collections.Generic;
+
+namespace InitialPrefabs.TaskFlow.Collections {
 
     public static class FixedUInt16Array32Extensions {
         public static void Add(this ref FixedUInt16Array32 fixedArray, ushort value) {
@@ -32,7 +35,28 @@
         }
     }
 
-    public unsafe struct FixedUInt16Array32 {
+    public unsafe struct FixedUInt16Array32 : IEnumerable<ushort> {
+
+        public unsafe struct Enumerator : IEnumerator<ushort> {
+            public ushort* Ptr;
+            public int Index;
+            public int Length;
+            public ushort Current => Ptr[Index];
+
+            object IEnumerator.Current => Current;
+
+            /// <summary>
+            /// No op.
+            /// </summary>
+            public void Dispose() { }
+
+            public bool MoveNext() => ++Index < Length;
+
+            public void Reset() {
+                Index = -1;
+            }
+        }
+
         public const int Capacity = 32;
         internal fixed byte Data[Capacity * sizeof(ushort)];
 
@@ -49,6 +73,20 @@
                 ref var element = ref this.ElementAt(i);
                 element = value;
             }
+        }
+
+        public IEnumerator<ushort> GetEnumerator() {
+            fixed (byte* ptr = Data) {
+                return new Enumerator {
+                    Ptr = (ushort*)ptr,
+                    Index = -1,
+                    Length = Count
+                };
+            }
+        }
+
+        IEnumerator IEnumerable.GetEnumerator() {
+            return GetEnumerator();
         }
     };
 }

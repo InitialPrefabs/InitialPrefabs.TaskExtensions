@@ -6,7 +6,7 @@ namespace InitialPrefabs.TaskFlow.Collections.Tests {
         [Test]
         public void AddTest() {
             var fixedArray = new FixedUInt16Array32();
-            for (int i = FixedUInt16Array32.Capacity - 1; i >= 0; i--) {
+            for (var i = FixedUInt16Array32.Capacity - 1; i >= 0; i--) {
                 fixedArray.Add((ushort)i);
                 var fillAmount = FixedUInt16Array32.Capacity - i;
                 Assert.That(fixedArray,
@@ -48,8 +48,18 @@ namespace InitialPrefabs.TaskFlow.Collections.Tests {
             }
             Assert.That(fixedArray, Has.Count.EqualTo(5), "Failed to add.");
 
-            fixedArray.RemoveAtSwapback(3);
-            fixedArray[3] = 4;
+            fixedArray.RemoveAtSwapback(2);
+
+            Assert.Multiple(() => {
+                var expected = new ushort[] { 0, 1, 4, 3 };
+                Assert.That(fixedArray[2], Is.EqualTo(4), "Mismatched elements.");
+                Assert.That(fixedArray, Has.Count.EqualTo(4), "Did not successfully remove from the fixedArray.");
+
+                var idx = 0;
+                foreach (var element in fixedArray) {
+                    Assert.That(element, Is.EqualTo(expected[idx++]), "Enumerator failed to iterate.");
+                }
+            });
         }
     }
 }

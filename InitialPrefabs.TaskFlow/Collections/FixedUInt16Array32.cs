@@ -48,9 +48,11 @@ namespace InitialPrefabs.TaskFlow.Collections {
             /// <summary>
             /// No op.
             /// </summary>
-            public void Dispose() { }
+            public readonly void Dispose() { }
 
-            public bool MoveNext() => ++Index < Length;
+            public bool MoveNext() {
+                return ++Index < Length;
+            }
 
             public void Reset() {
                 Index = -1;
@@ -66,9 +68,7 @@ namespace InitialPrefabs.TaskFlow.Collections {
         }
 
         public ushort this[int i] {
-            get {
-                return this.ElementAt(i);
-            }
+            get => this.ElementAt(i);
             set {
                 ref var element = ref this.ElementAt(i);
                 element = value;

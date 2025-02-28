@@ -10,6 +10,25 @@ namespace InitialPrefabs.TaskFlow.Collections {
     /// construct an array via a list as we can access the <see cref="Collection"/>.
     /// </summary>
     public class DynamicArray<T> : IEnumerable<T>, IReadOnlyList<T> {
+
+        public enum ResizeType {
+            /// <summary>
+            /// The <see cref="DynamicArray{T}.Count"/> does not grow or shrink when
+            /// forcibly resized.
+            /// </summary>
+            LeaveCountAsIs,
+            /// <summary>
+            /// Forces the <see cref="DynamicArray{T}"/> to match the new capacity.
+            /// </summary>
+            ForceCount,
+
+            /// <summary>
+            /// Forces the <see cref="DynamicArray{T}.Count"/> to be 0. This is effectively
+            /// a <see cref="DynamicArray{T}.Clear()"/>..
+            /// </summary>
+            ResetCount,
+        }
+
         internal T[] Collection;
 
         public int Capacity => Collection.Length;
@@ -44,7 +63,7 @@ namespace InitialPrefabs.TaskFlow.Collections {
 
         public void Add(T value) {
             if (Count >= Capacity) {
-                Array.Resize(ref Collection, Capacity + 1);
+                ForceResize(Count + 1);
             }
             Collection[Count++] = value;
         }
@@ -65,11 +84,18 @@ namespace InitialPrefabs.TaskFlow.Collections {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void ForceResize(int capacity) {
+        public void ForceResize(int capacity, ResizeType resizeType = ResizeType.LeaveCountAsIs) {
             var array = new T[capacity];
             var length = Utils.Min(Collection.Length, capacity);
             Array.Copy(Collection, array, length);
             Collection = array;
+
+            Count = resizeType switch {
+                ResizeType.ForceCount => capacity,
+                ResizeType.ResetCount => 0,
+                ResizeType.LeaveCountAsIs => Count,
+                _ => Count
+            };
         }
 
         public IEnumerator<T> GetEnumerator() {

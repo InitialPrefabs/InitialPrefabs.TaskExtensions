@@ -1,4 +1,5 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System;
+using System.Runtime.CompilerServices;
 
 namespace InitialPrefabs.TaskFlow.Collections {
 
@@ -48,10 +49,16 @@ namespace InitialPrefabs.TaskFlow.Collections {
     }
 
     public readonly struct Handle<T0> where T0 : struct, ITaskFor {
+        public static readonly Type PrimaryType = typeof(T0);
+
         private readonly ushort index;
 
         public Handle(ushort index) {
             this.index = index;
+        }
+
+        public readonly Type GetPrimaryType() {
+            return PrimaryType;
         }
 
         public static implicit operator ushort(Handle<T0> value) {

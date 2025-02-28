@@ -4,8 +4,9 @@ using System;
 namespace InitialPrefabs.TaskFlow {
 
     public interface INode<T> where T : unmanaged {
-        T Parent();
+        T ID();
         ReadOnlySpan<T> Children();
+        bool IsEmpty();
     }
 
     public struct TaskHandle<T0> : INode<ushort>
@@ -29,7 +30,11 @@ namespace InitialPrefabs.TaskFlow {
             }
         }
 
-        public readonly ushort Parent() {
+        public readonly bool IsEmpty() {
+            return Dependencies.Count == 0;
+        }
+
+        public readonly ushort ID() {
             return Handle;
         }
     }

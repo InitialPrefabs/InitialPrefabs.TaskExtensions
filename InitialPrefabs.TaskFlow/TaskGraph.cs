@@ -3,24 +3,17 @@ using System;
 
 namespace InitialPrefabs.TaskFlow {
 
-    // TODO: Implement topological sorting https://en.wikipedia.org/wiki/Topological_sorting
     public class TaskGraph {
 
         // Stores an ordered list of TaskHandles
         internal DynamicArray<INode<ushort>> Nodes;
-
-        [Obsolete]
         internal DynamicArray<INode<ushort>> Sorted;
-
-        [Obsolete]
-        internal DynamicArray<INode<ushort>> Independent;
 
         private const int MaxTasks = 256;
 
         public TaskGraph(int capacity) {
             Nodes = new DynamicArray<INode<ushort>>(capacity);
-            // Sorted = new DynamicArray<INode<ushort>>(capacity);
-            // Independent = new DynamicArray<INode<ushort>>(capacity);
+            Sorted = new DynamicArray<INode<ushort>>(capacity);
         }
 
         public void Track(INode<ushort> trackedTask) {
@@ -49,7 +42,6 @@ namespace InitialPrefabs.TaskFlow {
                 return;
             }
 
-
             // TODO: Maybe preallocate onto the heap a max task pool.
             Span<int> inDegree = stackalloc int[MaxTasks];
             Span<byte> _internalBytes = stackalloc byte[MaxTasks / 4];
@@ -57,9 +49,76 @@ namespace InitialPrefabs.TaskFlow {
             Span<ushort> adjacencyMatrix = stackalloc ushort[MaxTasks * MaxTasks];
             Span<ushort> taskIndexMap = stackalloc ushort[MaxTasks];
 
-            for (var i = 0; i < Nodes.Count; i++) {
+            var taskCount = Nodes.Count;
+
+            // Initialize the task index map
+            for (var i = 0; i < taskCount; i++) {
                 taskIndexMap[i] = Nodes[i].GlobalID;
             }
+
+            for (var i = 0; i < taskCount; i++) {
+                var task = Nodes[i];
+
+                foreach (var parentID in task.GetDependencies()) {
+                    var parentIdx = taskIndexMap.IndexOf(parentID, taskCount);
+                    var childIdx = i;
+
+                    if (parentIdx > -1) {
+                        adjacencyMatrix[(parentIdx * MaxTasks) + childIdx] = 1;
+                        inDegree[childIdx]++;
+                    }
+                }
+            }
+
+            PrintAdjacencyMatrix(adjacencyMatrix, taskCount);
+
+            Span<ushort> queue = stackalloc ushort[MaxTasks];
+            var queueStart = 0;
+            var queueEnd = 0;
+
+            for (var i = 0; i < taskCount; i++) {
+                if (inDegree[i] == 0) {
+                    queue[queueEnd++] = (ushort)i;
+                }
+            }
+
+            while (queueStart < queueEnd) {
+                int taskIdx = queue[queueStart++];
+                Sorted.Add(Nodes[taskIdx]);
+
+                for (var j = 0; j < taskCount; j++) {
+                    if (adjacencyMatrix[(taskIdx * MaxTasks) + j] == 1) {
+                        inDegree[j]--;
+
+                        if (inDegree[j] == 0) {
+                            queue[queueEnd++] = (ushort)j;
+                        }
+                    }
+                }
+            }
+
+            if (Sorted.Count != taskCount) {
+                throw new InvalidOperationException("Cyclic dependencies occurred!");
+            }
         }
+
+        public static void PrintAdjacencyMatrix(Span<ushort> adjacencyMatrix, int taskCount) {
+            Console.Write("    ");
+            for (var col = 0; col < taskCount; col++) {
+                Console.Write($"{col,3} ");
+            }
+            Console.WriteLine();
+            Console.WriteLine("   +" + new string('-', taskCount * 4));
+
+            for (var row = 0; row < taskCount; row++) {
+                Console.Write($"{row,2} |"); // Row index
+                for (var col = 0; col < taskCount; col++) {
+                    var index = (row * taskCount) + col; // Convert 2D index to 1D
+                    Console.Write($" {adjacencyMatrix[index],2} ");
+                }
+                Console.WriteLine();
+            }
+        }
+
     }
 }

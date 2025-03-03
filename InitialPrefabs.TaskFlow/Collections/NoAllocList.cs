@@ -24,7 +24,7 @@ namespace InitialPrefabs.TaskFlow.Collections {
         internal int Count;
 
         public NoAllocList(Span<T> span) {
-            this.Span = span;
+            Span = span;
             Length = span.Length;
             Count = 0;
         }

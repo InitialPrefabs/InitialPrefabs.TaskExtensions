@@ -12,7 +12,7 @@ namespace InitialPrefabs.TaskFlow {
 
     public static class TaskHandleExtensions {
         private static ushort UniqueID;
-        private static readonly TaskGraph TaskGraph;
+        internal static readonly TaskGraph TaskGraph;
 
         static TaskHandleExtensions() {
             UniqueID = 0;
@@ -55,11 +55,14 @@ namespace InitialPrefabs.TaskFlow {
             };
 
             // TODO: Track the task handle (will have to do boxing)
-            return new TaskHandle<T0>(handle) {
+            var taskHandle = new TaskHandle<T0>(handle) {
                 Parents = new FixedUInt16Array32 {
                     dependsOn.GlobalID
                 }
             };
+
+            TaskGraph.Track(taskHandle);
+            return taskHandle;
         }
 
         public static TaskHandle<T0> Schedule<T0>(this T0 task, Span<INode<ushort>> dependsOn)
@@ -81,9 +84,11 @@ namespace InitialPrefabs.TaskFlow {
             }
 
             // TODO: Track the task handle (will have to do boxing)
-            return new TaskHandle<T0>(handle) {
+            var taskHandle =new TaskHandle<T0>(handle) {
                 Parents = dependencies
             };
+            TaskGraph.Track(taskHandle);
+            return taskHandle;
         }
 
         // TODO: Add a way to combine one handle with another

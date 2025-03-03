@@ -48,12 +48,12 @@ namespace InitialPrefabs.TaskFlow.Collections {
         }
     }
 
-    public readonly struct Handle<T0> where T0 : struct, ITaskFor {
+    public readonly struct LocalHandle<T0> where T0 : struct, ITaskFor {
         public static readonly Type PrimaryType = typeof(T0);
 
         private readonly ushort index;
 
-        public Handle(ushort index) {
+        public LocalHandle(ushort index) {
             this.index = index;
         }
 
@@ -61,18 +61,18 @@ namespace InitialPrefabs.TaskFlow.Collections {
             return PrimaryType;
         }
 
-        public static implicit operator ushort(Handle<T0> value) {
+        public static implicit operator ushort(LocalHandle<T0> value) {
             return value.index;
         }
 
-        public static implicit operator Handle<T0>(ushort value) {
-            return new Handle<T0>(value);
+        public static implicit operator LocalHandle<T0>(ushort value) {
+            return new LocalHandle<T0>(value);
         }
     }
 
     /// <summary>
     /// Stores structs implement <see cref="ITaskFor"/> to avoid boxing on runtime.
-    /// When <see cref="Rent"/> is called, a <see cref="Handle{T0}"/> is returned providing
+    /// When <see cref="Rent"/> is called, a <see cref="LocalHandle{T0}"/> is returned providing
     /// the index of the <see cref="ITaskFor"/> struct.
     /// </summary>
     public static class TaskUnitPool<T0> where T0 : struct, ITaskFor {
@@ -97,31 +97,31 @@ namespace InitialPrefabs.TaskFlow.Collections {
         /// <summary>
         /// Returns an allocated struct implementing <see cref="ITaskFor"/> to be copied into,
         /// </summary>
-        /// <returns>A <see cref="Handle{T0}"/> storing the index and Task container.</returns>
-        public static Handle<T0> Rent() {
+        /// <returns>A <see cref="LocalHandle{T0}"/> storing the index and Task container.</returns>
+        public static LocalHandle<T0> Rent() {
             if (FreeIndices.IsEmpty) {
                 var index = (ushort)Tasks.Count;
                 Tasks.Add(new TaskMetadata<T0>());
-                return new Handle<T0>(index);
+                return new LocalHandle<T0>(index);
             } else {
                 var lastIndex = FreeIndices.Count - 1;
                 var freeIndex = FreeIndices[lastIndex];
                 FreeIndices.RemoveAtSwapback(lastIndex);
                 var task = Tasks[freeIndex];
-                return new Handle<T0>(freeIndex);
+                return new LocalHandle<T0>(freeIndex);
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void Return(Handle<T0> handle) {
+        public static void Return(LocalHandle<T0> handle) {
             FreeIndices.Add(handle);
         }
 
-        public static ref T0 TaskElementAt(Handle<T0> handle) {
+        public static ref T0 TaskElementAt(LocalHandle<T0> handle) {
             return ref Tasks.Collection[handle].Task;
         }
 
-        public static ref TaskMetadata<T0> ElementAt(Handle<T0> handle) {
+        public static ref TaskMetadata<T0> ElementAt(LocalHandle<T0> handle) {
             return ref Tasks.Collection[handle];
         }
 

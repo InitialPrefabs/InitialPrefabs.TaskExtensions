@@ -7,30 +7,58 @@ namespace InitialPrefabs.TaskFlow {
     public class TaskGraph {
 
         // Stores an ordered list of TaskHandles
-        internal DynamicArray<INode<ushort>> BoxedTrackables;
+        internal DynamicArray<INode<ushort>> Nodes;
+
+        [Obsolete]
         internal DynamicArray<INode<ushort>> Sorted;
+
+        [Obsolete]
         internal DynamicArray<INode<ushort>> Independent;
 
+        private const int MaxTasks = 256;
+
         public TaskGraph(int capacity) {
-            BoxedTrackables = new DynamicArray<INode<ushort>>(capacity);
-            Sorted = new DynamicArray<INode<ushort>>(capacity);
-            Independent = new DynamicArray<INode<ushort>>(capacity);
+            Nodes = new DynamicArray<INode<ushort>>(capacity);
+            // Sorted = new DynamicArray<INode<ushort>>(capacity);
+            // Independent = new DynamicArray<INode<ushort>>(capacity);
         }
 
         public void Track(INode<ushort> trackedTask) {
-            throw new System.NotImplementedException();
+            // TODO: Check if the dependency already exists
+            Nodes.Add(trackedTask);
         }
 
-        private void Sort() {
-            // First get all independent dependencies, so we need to build a map of some kind
-            // The current problem right now is that, to build this sort of graph and figure out
-            // standalone dependencies. I need to know which handles rely on another handle.
-            // While I have the children, the node doesn't know what its parent is.
-            // Handle<T0> only contains the index within a TaskUnitPool<T0>, but if there are
-            // different type for TaskUnitPools, collision will occur with the IDs.
-            Span<int> map = stackalloc int[BoxedTrackables.Count];
+        internal bool IsDependent(int index) {
+            for (var i = 0; i < Nodes.Count; i++) {
+                if (i == index) {
+                    continue;
+                }
 
-            for (var i = 0; i < BoxedTrackables.Count; i++) {
+                var node = Nodes[i];
+                foreach (ref readonly var dependency in node.GetDependencies()) {
+                    if (dependency == index) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        internal void Sort() {
+            if (Nodes.Count == 0) {
+                return;
+            }
+
+
+            // TODO: Maybe preallocate onto the heap a max task pool.
+            Span<int> inDegree = stackalloc int[MaxTasks];
+            Span<byte> _internalBytes = stackalloc byte[MaxTasks / 4];
+            var visited = new NoAllocBitArray(_internalBytes);
+            Span<ushort> adjacencyMatrix = stackalloc ushort[MaxTasks * MaxTasks];
+            Span<ushort> taskIndexMap = stackalloc ushort[MaxTasks];
+
+            for (var i = 0; i < Nodes.Count; i++) {
+                taskIndexMap[i] = Nodes[i].GlobalID;
             }
         }
     }

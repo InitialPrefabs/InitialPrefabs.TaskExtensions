@@ -1,41 +1,10 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 
 namespace InitialPrefabs.TaskFlow.Collections {
 
-    public static class FixedUInt16Array32Extensions {
-        public static void Add(this ref FixedUInt16Array32 fixedArray, ushort value) {
-            if (fixedArray.Count >= FixedUInt16Array32.Capacity) {
-                return;
-            }
-            fixedArray[fixedArray.Count++] = value;
-        }
-
-        public static void RemoveAt(this ref FixedUInt16Array32 fixedArray, ushort index) {
-            fixedArray.Count--;
-            for (var i = index; i < fixedArray.Count; i++) {
-                fixedArray[i] = fixedArray[i + 1];
-            }
-        }
-
-        public static void RemoveAtSwapback(this ref FixedUInt16Array32 fixedArray, ushort index) {
-            fixedArray.Count--;
-            var last = fixedArray[fixedArray.Count];
-            fixedArray[index] = last;
-        }
-
-        public static ref ushort ElementAt(this ref FixedUInt16Array32 fixedArray, int index) {
-            unsafe {
-                fixed (byte* head = fixedArray.Data) {
-                    var ptr = (ushort*)head;
-                    var indexed = ptr + index;
-                    return ref *indexed;
-                }
-            }
-        }
-    }
-
-    public unsafe struct FixedUInt16Array32 : IEnumerable<ushort> {
+    public unsafe struct FixedUInt16Array32 : IEnumerable<ushort>, IEquatable<FixedUInt16Array32> {
 
         public unsafe struct Enumerator : IEnumerator<ushort> {
             public ushort* Ptr;
@@ -88,5 +57,49 @@ namespace InitialPrefabs.TaskFlow.Collections {
         IEnumerator IEnumerable.GetEnumerator() {
             return GetEnumerator();
         }
+
+        public bool Equals(FixedUInt16Array32 other) {
+            if (Count != other.Count) {
+                return false;
+            }
+            for (var i = 0; i < Count; i++) {
+                if (other[i] != this[i]) {
+                    return false;
+                }
+            }
+            return true;
+        }
     };
+
+    public static class FixedUInt16Array32Extensions {
+        public static void Add(this ref FixedUInt16Array32 fixedArray, ushort value) {
+            if (fixedArray.Count >= FixedUInt16Array32.Capacity) {
+                return;
+            }
+            fixedArray[fixedArray.Count++] = value;
+        }
+
+        public static void RemoveAt(this ref FixedUInt16Array32 fixedArray, ushort index) {
+            fixedArray.Count--;
+            for (var i = index; i < fixedArray.Count; i++) {
+                fixedArray[i] = fixedArray[i + 1];
+            }
+        }
+
+        public static void RemoveAtSwapback(this ref FixedUInt16Array32 fixedArray, ushort index) {
+            fixedArray.Count--;
+            var last = fixedArray[fixedArray.Count];
+            fixedArray[index] = last;
+        }
+
+        public static ref ushort ElementAt(this ref FixedUInt16Array32 fixedArray, int index) {
+            unsafe {
+                fixed (byte* head = fixedArray.Data) {
+                    var ptr = (ushort*)head;
+                    var indexed = ptr + index;
+                    return ref *indexed;
+                }
+            }
+        }
+    }
 }

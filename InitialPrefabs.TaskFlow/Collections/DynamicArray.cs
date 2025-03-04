@@ -98,6 +98,15 @@ namespace InitialPrefabs.TaskFlow.Collections {
             };
         }
 
+        public int IndexOf(T element) {
+            for (var i = 0; i < Count; i++) {
+                if (Collection[i].Equals(element)) {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
         public IEnumerator<T> GetEnumerator() {
             for (var i = 0; i < Count; i++) {
                 yield return Collection[i];

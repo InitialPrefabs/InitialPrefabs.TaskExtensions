@@ -27,6 +27,22 @@ namespace InitialPrefabs.TaskFlow {
             return UniqueID++;
         }
 
+        public static void DependsOn<T0, T1>(this ref TaskHandle<T0> handle, TaskHandle<T1> taskHandle)
+            where T0 : struct, ITaskFor, IEquatable<T0>
+            where T1 : struct, ITaskFor, IEquatable<T1> {
+
+            var handleIdx = TaskGraph.Nodes.IndexOf(handle);
+            if (handleIdx > -1) {
+                var node = (TaskHandle<T0>)TaskGraph.Nodes[handleIdx];
+                node.DependsOn(taskHandle);
+                handle.Parents.Add(taskHandle.GlobalID);
+            } else {
+                throw new InvalidOperationException($"TaskHandle {handle.GetType()} with " +
+                    $"ID: {handle.GlobalID}, cannot track TaskHandle, {taskHandle.GetType()} " +
+                    $"with Global ID: {taskHandle.GlobalID} because it is NOT properly tracked in a Graph.");
+            }
+        }
+
         public static TaskHandle<T0> Schedule<T0>(this T0 task) where T0 : struct, ITaskFor {
             var handle = TaskUnitPool<T0>.Rent();
             ref var metadata = ref TaskUnitPool<T0>.ElementAt(handle);
@@ -84,7 +100,7 @@ namespace InitialPrefabs.TaskFlow {
             }
 
             // TODO: Track the task handle (will have to do boxing)
-            var taskHandle =new TaskHandle<T0>(handle) {
+            var taskHandle = new TaskHandle<T0>(handle) {
                 Parents = dependencies
             };
             TaskGraph.Track(taskHandle);
@@ -112,6 +128,19 @@ namespace InitialPrefabs.TaskFlow {
         public readonly ushort LocalID => LocalHandle;
 
         public readonly ushort GlobalID => GlobalHandle;
+
+        /// <summary>
+        /// Allows the TaskHandle to be returned back to its associated
+        /// <see cref="TaskUnitPool{T0}"/>.
+        ///
+        /// <remarks>
+        /// Do not manually call this method! The <see cref="TaskGraph"/> will return
+        /// all <see cref="INode{T}"/> to their <see cref="TaskUnitPool{T0}"/>.
+        /// </remarks>
+        /// </summary>
+        public readonly void Dispose() {
+            TaskUnitPool<T0>.Return(LocalHandle);
+        }
 
         public readonly ReadOnlySpan<ushort> GetDependencies() {
             unsafe {

@@ -5,12 +5,31 @@ using System.Diagnostics;
 namespace InitialPrefabs.TaskFlow {
 
     public class TaskGraph {
+        private const int MaxTasks = 256;
+
+        internal unsafe struct MaxBytes {
+            internal fixed byte Data[MaxTasks / 4];
+
+            public readonly Span<byte> AsByteSpan() {
+                fixed (byte* ptr = Data) {
+                    return new Span<byte>(ptr, MaxTasks / 4);
+                }
+            }
+        }
 
         // Stores an ordered list of TaskHandles
         internal DynamicArray<INode<ushort>> Nodes;
         internal DynamicArray<INode<ushort>> Sorted;
+        internal MaxBytes Bytes;
 
-        private const int MaxTasks = 256;
+        public void Reset() {
+            foreach (var node in Nodes) {
+                node.Dispose();
+            }
+            Nodes.Clear();
+            Sorted.Clear();
+            Bytes = default;
+        }
 
         public TaskGraph(int capacity) {
             Nodes = new DynamicArray<INode<ushort>>(capacity);
@@ -18,8 +37,13 @@ namespace InitialPrefabs.TaskFlow {
         }
 
         public void Track(INode<ushort> trackedTask) {
-            // TODO: Check if the dependency already exists
-            Nodes.Add(trackedTask);
+            var span = Bytes.AsByteSpan();
+            var bitArray = new NoAllocBitArray(span);
+
+            if (!bitArray[trackedTask.GlobalID]) {
+                bitArray[trackedTask.GlobalID] = true;
+                Nodes.Add(trackedTask);
+            }
         }
 
         internal bool IsDependent(int index) {
@@ -43,7 +67,6 @@ namespace InitialPrefabs.TaskFlow {
                 return;
             }
 
-            // TODO: Maybe preallocate onto the heap a max task pool.
             Span<int> inDegree = stackalloc int[MaxTasks];
             Span<byte> _internalBytes = stackalloc byte[NoAllocBitArray.CalculateSize(MaxTasks)];
             var visited = new NoAllocBitArray(_internalBytes);
@@ -95,8 +118,9 @@ namespace InitialPrefabs.TaskFlow {
                 }
             }
 
+            Console.WriteLine($"Sorted: {Sorted.Count}, Task Count: {taskCount}");
             if (Sorted.Count != taskCount) {
-                throw new InvalidOperationException("Cyclic dependencies occurred!");
+                throw new InvalidOperationException("Cyclic dependencies occurred, aborting!");
             }
         }
 
@@ -118,6 +142,5 @@ namespace InitialPrefabs.TaskFlow {
                 Console.WriteLine();
             }
         }
-
     }
 }

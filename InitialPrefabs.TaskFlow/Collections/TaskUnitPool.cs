@@ -13,7 +13,7 @@ namespace InitialPrefabs.TaskFlow.Collections {
         Faulted
     }
 
-    public struct Workload {
+    public struct Workload : IEquatable<Workload> {
         public byte ThreadCount;
         public uint WorkDonePerThread;
 
@@ -30,15 +30,25 @@ namespace InitialPrefabs.TaskFlow.Collections {
                 WorkDonePerThread = length
             };
         }
+
+        public bool Equals(Workload other) {
+            return other.ThreadCount == ThreadCount && WorkDonePerThread == other.WorkDonePerThread;
+        }
     }
 
-    public class TaskMetadata<T0> where T0: struct, ITaskFor {
+    public class TaskMetadata<T0> : IEquatable<TaskMetadata<T0>> where T0 : struct, ITaskFor {
         public T0 Task;
         public TaskState State;
         public Workload Workload;
 
         public TaskMetadata() {
             Reset();
+        }
+
+        public bool Equals(TaskMetadata<T0> other) {
+            return other.State == State &&
+                other.Workload.Equals(Workload) &&
+                other.Task.GetHashCode() == Task.GetHashCode();
         }
 
         public void Reset() {
@@ -48,17 +58,15 @@ namespace InitialPrefabs.TaskFlow.Collections {
         }
     }
 
-    public readonly struct LocalHandle<T0> where T0 : struct, ITaskFor {
-        public static readonly Type PrimaryType = typeof(T0);
-
+    public readonly struct LocalHandle<T0> : IEquatable<LocalHandle<T0>> where T0 : struct, ITaskFor {
         private readonly ushort index;
 
         public LocalHandle(ushort index) {
             this.index = index;
         }
 
-        public readonly Type GetPrimaryType() {
-            return PrimaryType;
+        public bool Equals(LocalHandle<T0> other) {
+            return other.index == index;
         }
 
         public static implicit operator ushort(LocalHandle<T0> value) {

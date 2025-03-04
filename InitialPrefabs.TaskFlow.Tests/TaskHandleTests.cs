@@ -1,8 +1,10 @@
-﻿using NUnit.Framework;
+﻿using InitialPrefabs.TaskFlow.Collections;
+using NUnit.Framework;
 using System;
 
 namespace InitialPrefabs.TaskFlow.Tests {
-    public class TaskHandleTests {
+
+    public class TaskGraphTests {
 
         private struct S : ITaskFor {
             public readonly void Execute(int index) { }
@@ -10,6 +12,33 @@ namespace InitialPrefabs.TaskFlow.Tests {
 
         private struct T : ITaskFor {
             public readonly void Execute(int index) { }
+        }
+
+        [SetUp]
+        public void SetUp() {
+            var graph = TaskHandleExtensions.TaskGraph;
+            var bitArray = new NoAllocBitArray(graph.Bytes.AsByteSpan());
+            var index = 0;
+            foreach (var element in bitArray) {
+                bitArray[index++] = true;
+            }
+
+            foreach (var element in bitArray) {
+                Assert.That(element, "Did not fill correctly");
+            }
+
+            graph.Reset();
+            Assert.Multiple(() => {
+                Assert.That(graph.Sorted, Has.Count.EqualTo(0),
+                        "Sorted elemens were not resetted");
+                Assert.That(graph.Nodes, Has.Count.EqualTo(0),
+                        "Tracked Nodes were not resetted");
+
+                var bitArray = new NoAllocBitArray(graph.Bytes.AsByteSpan());
+                foreach (var element in bitArray) {
+                    Assert.That(!element, "Did not reset");
+                }
+            });
         }
 
         [Test]
@@ -24,19 +53,38 @@ namespace InitialPrefabs.TaskFlow.Tests {
             // The order should be
             // A E
             // B C
-            // D F
+            // F D
             //
             // Or
             // 0 4
             // 1 2
-            // 3 5
+            // 5 3
 
+            var order = new[] { 0, 4, 1, 2, 5, 3 };
             var sorted = TaskHandleExtensions.TaskGraph.Sorted;
             TaskHandleExtensions.TaskGraph.Sort();
 
-            foreach (var node in sorted) {
-                Console.WriteLine($"TaskHandle ID: {node.GlobalID}");
+            Assert.That(sorted, Has.Count.EqualTo(order.Length), "Mismatched tracking.");
+
+            for (var i = 0; i < order.Length; i++) {
+                Assert.That(
+                        sorted[i].GlobalID,
+                        Is.EqualTo(order[i]), $"Failed at {i} with value: {order[i]}, mismatched order");
             }
+        }
+
+        [Test]
+        public void SortingThrowsErrorOnCyclicDependencies() {
+            var handleA = new S { }.Schedule();
+            var handleB = new S { }.Schedule(handleA);
+            var handleC = new S { }.Schedule(handleB);
+            handleA.DependsOn(handleC);
+
+            var exception = Assert.Throws<InvalidOperationException>(static () => {
+                TaskHandleExtensions.TaskGraph.Sort();
+            });
+
+            Assert.That(exception, Is.Not.Null, "Exception should be thrown");
         }
     }
 }

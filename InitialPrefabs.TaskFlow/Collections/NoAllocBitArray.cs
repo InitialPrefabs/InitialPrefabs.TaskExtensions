@@ -65,6 +65,10 @@ namespace InitialPrefabs.TaskFlow.Collections {
         public static int CalculateSize(int totalBools) {
             return MathUtils.CeilToIntDivision(totalBools, 4);
         }
+
+        public readonly NoAllocBitArrayEnumerator GetEnumerator() {
+            return new NoAllocBitArrayEnumerator(this);
+        }
     }
 
     public static class NoAllocBitArrayExtensions {

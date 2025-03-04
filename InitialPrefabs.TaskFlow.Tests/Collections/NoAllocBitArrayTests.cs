@@ -21,6 +21,16 @@ namespace InitialPrefabs.TaskFlow.Collections.Tests {
                 Assert.That(bitArray[i], "All elements must be true.");
             }
         }
+
+        [Test]
+        public void CalculateBitArraySize() {
+            Assert.Multiple(static () => {
+                Assert.That(NoAllocBitArray.CalculateSize(4), Is.EqualTo(1),
+                        "A bool is represented by 1 byte or 4 bits");
+                Assert.That(NoAllocBitArray.CalculateSize(5), Is.EqualTo(2),
+                        "To represent 5 bools, we need 2 bytes, or 8 bits in total");
+            });
+        }
     }
 }
 

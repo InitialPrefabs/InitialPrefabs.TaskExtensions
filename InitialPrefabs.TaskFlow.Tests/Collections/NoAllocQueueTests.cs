@@ -2,6 +2,7 @@
 using System;
 
 namespace InitialPrefabs.TaskFlow.Collections.Tests {
+
     public class NoAllocQueueTests {
 
         [Test]

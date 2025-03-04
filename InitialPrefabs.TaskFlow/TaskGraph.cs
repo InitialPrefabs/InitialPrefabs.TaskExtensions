@@ -1,5 +1,6 @@
 ﻿using InitialPrefabs.TaskFlow.Collections;
 using System;
+using System.Diagnostics;
 
 namespace InitialPrefabs.TaskFlow {
 
@@ -44,7 +45,7 @@ namespace InitialPrefabs.TaskFlow {
 
             // TODO: Maybe preallocate onto the heap a max task pool.
             Span<int> inDegree = stackalloc int[MaxTasks];
-            Span<byte> _internalBytes = stackalloc byte[MaxTasks / 4];
+            Span<byte> _internalBytes = stackalloc byte[NoAllocBitArray.CalculateSize(MaxTasks)];
             var visited = new NoAllocBitArray(_internalBytes);
             Span<ushort> adjacencyMatrix = stackalloc ushort[MaxTasks * MaxTasks];
             Span<ushort> taskIndexMap = stackalloc ushort[MaxTasks];
@@ -99,6 +100,7 @@ namespace InitialPrefabs.TaskFlow {
             }
         }
 
+        [Conditional("DEBUG")]
         public static void PrintAdjacencyMatrix(Span<ushort> adjacencyMatrix, int taskCount) {
             Console.Write("    ");
             for (var col = 0; col < taskCount; col++) {

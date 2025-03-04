@@ -60,6 +60,11 @@ namespace InitialPrefabs.TaskFlow.Collections {
                 }
             }
         }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int CalculateSize(int totalBools) {
+            return MathUtils.CeilToIntDivision(totalBools, 4);
+        }
     }
 
     public static class NoAllocBitArrayExtensions {

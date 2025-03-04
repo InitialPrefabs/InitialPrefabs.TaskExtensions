@@ -9,7 +9,7 @@ namespace InitialPrefabs.TaskFlow.Collections {
     /// Similar to a <see cref="List{T}"/> with an internal array. This avoids having to
     /// construct an array via a list as we can access the <see cref="Collection"/>.
     /// </summary>
-    public class DynamicArray<T> : IEnumerable<T>, IReadOnlyList<T> {
+    public class DynamicArray<T0> : IEnumerable<T0>, IReadOnlyList<T0> {
 
         public enum ResizeType {
             /// <summary>
@@ -29,7 +29,7 @@ namespace InitialPrefabs.TaskFlow.Collections {
             ResetCount,
         }
 
-        internal T[] Collection;
+        internal T0[] Collection;
 
         public int Capacity => Collection.Length;
         public bool IsEmpty => Count == 0;
@@ -37,23 +37,23 @@ namespace InitialPrefabs.TaskFlow.Collections {
         public int Count { get; internal set; }
 
         public DynamicArray(int capacity) {
-            Collection = new T[capacity];
+            Collection = new T0[capacity];
             Count = 0;
         }
 
-        public DynamicArray(int capacity, T defaultValue) : this(capacity) {
-            foreach (ref var element in new Span<T>(Collection)) {
+        public DynamicArray(int capacity, T0 defaultValue) : this(capacity) {
+            foreach (ref var element in new Span<T0>(Collection)) {
                 element = defaultValue;
             }
         }
 
-        public T this[int i] {
+        public T0 this[int i] {
             get => Collection[i];
             set => Collection[i] = value;
         }
 
-        public ReadOnlySpan<T> AsReadOnlySpan() {
-            return new ReadOnlySpan<T>(Collection, 0, Count);
+        public ReadOnlySpan<T0> AsReadOnlySpan() {
+            return new ReadOnlySpan<T0>(Collection, 0, Count);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -61,7 +61,7 @@ namespace InitialPrefabs.TaskFlow.Collections {
             Count = 0;
         }
 
-        public void Add(T value) {
+        public void Add(T0 value) {
             if (Count >= Capacity) {
                 ForceResize(Count + 1);
             }
@@ -85,7 +85,7 @@ namespace InitialPrefabs.TaskFlow.Collections {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void ForceResize(int capacity, ResizeType resizeType = ResizeType.LeaveCountAsIs) {
-            var array = new T[capacity];
+            var array = new T0[capacity];
             var length = MathUtils.Min(Collection.Length, capacity);
             Array.Copy(Collection, array, length);
             Collection = array;
@@ -98,16 +98,25 @@ namespace InitialPrefabs.TaskFlow.Collections {
             };
         }
 
-        public int IndexOf(T element) {
+        public int IndexOf<T1>(T0 element, T1 comparer) where T1 : IComparer<T0> {
             for (var i = 0; i < Count; i++) {
-                if (Collection[i].Equals(element)) {
+                if (comparer.Compare(element, Collection[i]) == 0) {
                     return i;
                 }
             }
             return -1;
         }
 
-        public IEnumerator<T> GetEnumerator() {
+        public int IndexOf(Predicate<T0> predicate) {
+            for (var i = 0; i < Count; i++) {
+                if (predicate.Invoke(Collection[i])) {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
+        public IEnumerator<T0> GetEnumerator() {
             for (var i = 0; i < Count; i++) {
                 yield return Collection[i];
             }

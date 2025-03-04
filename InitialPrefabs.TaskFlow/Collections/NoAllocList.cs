@@ -2,7 +2,7 @@
 
 namespace InitialPrefabs.TaskFlow.Collections {
 
-    public ref struct NoAllocEnumerator<T> where T : unmanaged {
+    public ref struct NoAllocEnumerator<T> {
         internal Span<T> Ptr;
         internal int Index;
         internal int Length;
@@ -17,7 +17,7 @@ namespace InitialPrefabs.TaskFlow.Collections {
         }
     }
 
-    public ref struct NoAllocList<T> where T : unmanaged {
+    public ref struct NoAllocList<T> {
 
         internal readonly Span<T> Span;
         public readonly int Length;

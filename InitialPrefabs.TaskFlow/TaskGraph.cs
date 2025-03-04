@@ -72,26 +72,23 @@ namespace InitialPrefabs.TaskFlow {
 
             PrintAdjacencyMatrix(adjacencyMatrix, taskCount);
 
-            Span<ushort> queue = stackalloc ushort[MaxTasks];
-            var queueStart = 0;
-            var queueEnd = 0;
-
-            for (var i = 0; i < taskCount; i++) {
+            Span<ushort> _queue = stackalloc ushort[MaxTasks];
+            var queue = new NoAllocQueue<ushort>(_queue);
+            for (ushort i = 0; i < taskCount; i++) {
                 if (inDegree[i] == 0) {
-                    queue[queueEnd++] = (ushort)i;
+                    _ = queue.TryEnqueue(i);
                 }
             }
 
-            while (queueStart < queueEnd) {
-                int taskIdx = queue[queueStart++];
+            while (queue.Count > 0) {
+                var taskIdx = queue.Dequeue();
                 Sorted.Add(Nodes[taskIdx]);
+                for (ushort x = 0; x < taskCount; x++) {
+                    if (adjacencyMatrix[(taskIdx * MaxTasks) + x] == 1) {
+                        inDegree[x]--;
 
-                for (var j = 0; j < taskCount; j++) {
-                    if (adjacencyMatrix[(taskIdx * MaxTasks) + j] == 1) {
-                        inDegree[j]--;
-
-                        if (inDegree[j] == 0) {
-                            queue[queueEnd++] = (ushort)j;
+                        if (inDegree[x] == 0) {
+                            _ = queue.TryEnqueue(x);
                         }
                     }
                 }

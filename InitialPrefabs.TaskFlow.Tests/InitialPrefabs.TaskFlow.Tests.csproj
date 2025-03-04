@@ -2,11 +2,13 @@
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
+    <OutputType>exe</OutputType>
     <LangVersion>9</LangVersion>
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>disable</Nullable>
     <IsPackable>false</IsPackable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <StartupObject>InitialPrefabs.TaskFlow.Tests.Program</StartupObject>
   </PropertyGroup>
 
   <ItemGroup>
@@ -15,6 +17,7 @@
     <PackageReference Include="NUnit" Version="4.2.2" />
     <PackageReference Include="NUnit.Analyzers" Version="4.4.0" />
     <PackageReference Include="NUnit3TestAdapter" Version="4.6.0" />
+    <PackageReference Include="NUnitLite" Version="4.2.2" />
   </ItemGroup>
 
   <ItemGroup>

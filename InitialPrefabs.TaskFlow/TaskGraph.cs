@@ -20,6 +20,7 @@ namespace InitialPrefabs.TaskFlow {
         // Stores an ordered list of TaskHandles
         internal DynamicArray<INode<ushort>> Nodes;
         internal DynamicArray<INode<ushort>> Sorted;
+        internal DynamicArray<INode<ushort>> Queue;
         internal MaxBytes Bytes;
 
         public void Reset() {
@@ -34,6 +35,7 @@ namespace InitialPrefabs.TaskFlow {
         public TaskGraph(int capacity) {
             Nodes = new DynamicArray<INode<ushort>>(capacity);
             Sorted = new DynamicArray<INode<ushort>>(capacity);
+            Queue = new DynamicArray<INode<ushort>>(capacity);
         }
 
         public void Track(INode<ushort> trackedTask) {
@@ -121,6 +123,19 @@ namespace InitialPrefabs.TaskFlow {
             Console.WriteLine($"Sorted: {Sorted.Count}, Task Count: {taskCount}");
             if (Sorted.Count != taskCount) {
                 throw new InvalidOperationException("Cyclic dependencies occurred, aborting!");
+            }
+        }
+
+        public void Flush() {
+            foreach (var element in Sorted) {
+                // For each element, find the dependencies, check if they're done.
+                // Somehow I need to unify the types, I could check against the tracked Nodes
+                // TODO: INode may need to implement a way to check if the dependencies are done
+                // INode also needs to grab the metadata from the TaskUnitPool?
+                // Do I store a TaskMetadata handle too? I need to figure that out.
+                var idx = Array.BinarySearch(Nodes.Collection, 0, Nodes.Count, element);
+                if (idx > -1 && idx < Nodes.Count) {
+                }
             }
         }
 

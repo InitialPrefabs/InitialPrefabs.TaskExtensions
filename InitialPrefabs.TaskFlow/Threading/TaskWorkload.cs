@@ -44,7 +44,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
 
         public static TaskWorkload MultiUnit(int total, int batchSize) {
             return new TaskWorkload {
-                Type = WorkloadType.SingleThreadLoop,
+                Type = WorkloadType.MultiThreadLoop,
                 Total = total,
                 BatchSize = batchSize
             };

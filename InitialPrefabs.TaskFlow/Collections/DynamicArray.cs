@@ -107,6 +107,16 @@ namespace InitialPrefabs.TaskFlow.Collections {
             return -1;
         }
 
+        public int Find(Predicate<T0> predicate) {
+            for (var i = 0; i < Count; i++) {
+                var element = Collection[i];
+                if (predicate.Invoke(element)) {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
         public IEnumerator<T0> GetEnumerator() {
             for (var i = 0; i < Count; i++) {
                 yield return Collection[i];

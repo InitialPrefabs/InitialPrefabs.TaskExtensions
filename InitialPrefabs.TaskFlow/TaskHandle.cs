@@ -7,6 +7,7 @@ namespace InitialPrefabs.TaskFlow {
     public interface INode<T> : IDisposable where T : unmanaged {
         ushort LocalID { get; }
         ushort GlobalID { get; }
+        ITaskFor Task { get; }
         ReadOnlySpan<T> GetDependencies();
         bool IsEmpty();
     }
@@ -35,6 +36,8 @@ namespace InitialPrefabs.TaskFlow {
         public readonly ushort LocalID => LocalHandle;
 
         public readonly ushort GlobalID => GlobalHandle;
+
+        public readonly ITaskFor Task => TaskUnitPool<T0>.ElementAt(LocalHandle);
 
         /// <summary>
         /// Allows the TaskHandle to be returned back to its associated
@@ -65,6 +68,8 @@ namespace InitialPrefabs.TaskFlow {
 
     public static class TaskHandleExtensions {
         internal const int Capacity = 10;
+
+        // TODO: Change this to byte if I am only supporting up to 256 tasks?
         private static ushort UniqueID;
         internal static TaskGraph Graph;
 
@@ -109,10 +114,10 @@ namespace InitialPrefabs.TaskFlow {
         public static TaskHandle<T0> Schedule<T0, T1>(this T0 task, TaskHandle<T1> dependsOn)
             where T0 : struct, ITaskFor
             where T1 : struct, ITaskFor {
-            var handle = TaskUnitPool<T0>.Rent(task);
+            var localHandle = TaskUnitPool<T0>.Rent(task);
 
             // TODO: Track the task handle (will have to do boxing)
-            var taskHandle = new TaskHandle<T0>(handle) {
+            var taskHandle = new TaskHandle<T0>(localHandle) {
                 Parents = new FixedUInt16Array32 {
                     dependsOn.GlobalID
                 }

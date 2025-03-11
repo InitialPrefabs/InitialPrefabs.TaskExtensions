@@ -91,7 +91,7 @@ namespace InitialPrefabs.TaskFlow.Collections.Tests {
             }
 
             foreach (var handle in handles) {
-                ref var task = ref TaskUnitPool<S>.TaskElementAt(handle);
+                ref var task = ref TaskUnitPool<S>.ElementAt(handle);
                 Assert.That(task, Is.EqualTo(default(S)));
             }
         }

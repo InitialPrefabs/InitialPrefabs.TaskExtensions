@@ -123,7 +123,7 @@ namespace InitialPrefabs.TaskFlow.Collections {
             FreeIndices.Add(handle);
         }
 
-        public static ref T0 TaskElementAt(LocalHandle<T0> handle) {
+        public static ref T0 ElementAt(LocalHandle<T0> handle) {
             return ref Tasks.Collection[handle];
         }
 

@@ -1,11 +1,34 @@
 ﻿using InitialPrefabs.TaskFlow.Collections;
 using System;
 using System.Diagnostics;
+using System.Threading;
 
 namespace InitialPrefabs.TaskFlow {
 
+    internal static class TaskGraphExtensions {
+        public static Span<sbyte> AsSpan(this ref TaskGraph.Buffer matrix) {
+            unsafe {
+                fixed (sbyte* ptr = matrix.Data) {
+                    return new Span<sbyte>(ptr, TaskGraph.MaxTasks);
+                }
+            }
+        }
+
+        public static void Reset(this ref TaskGraph.Buffer matrix) {
+            var span = matrix.AsSpan();
+            foreach (ref var element in span) {
+                element = default;
+            }
+        }
+    }
+
     public class TaskGraph {
-        private const int MaxTasks = 256;
+
+        internal const int MaxTasks = 256;
+
+        internal unsafe struct Buffer {
+            public fixed sbyte Data[MaxTasks];
+        }
 
         internal unsafe struct MaxBytes {
             internal fixed byte Data[MaxTasks / 4];
@@ -20,11 +43,15 @@ namespace InitialPrefabs.TaskFlow {
         // Stores an ordered list of TaskHandles
         internal DynamicArray<INode<ushort>> Nodes;
         internal DynamicArray<INode<ushort>> Sorted;
-        internal DynamicArray<INode<ushort>> Queue;
-        internal DynamicArray<TaskMetadata> Metadata;
+        internal DynamicArray<TaskMetadata> Metadata; // TODO: Sort the metadata also?
         internal MaxBytes Bytes;
+        internal Buffer Edges;
+
+        internal int RunningTasks;
 
         public void Reset() {
+            RunningTasks = 0;
+
             foreach (var node in Nodes) {
                 node.Dispose();
             }
@@ -43,7 +70,6 @@ namespace InitialPrefabs.TaskFlow {
         public TaskGraph(int capacity) {
             Nodes = new DynamicArray<INode<ushort>>(capacity);
             Sorted = new DynamicArray<INode<ushort>>(capacity);
-            Queue = new DynamicArray<INode<ushort>>(capacity);
             Metadata = new DynamicArray<TaskMetadata>(capacity);
 
             for (var i = 0; i < capacity; i++) {
@@ -97,24 +123,19 @@ namespace InitialPrefabs.TaskFlow {
                 return;
             }
 
-            Span<int> inDegree = stackalloc int[MaxTasks];
+            Edges.Reset();
+            var inDegree = Edges.AsSpan();
             Span<byte> _internalBytes = stackalloc byte[NoAllocBitArray.CalculateSize(MaxTasks)];
             var visited = new NoAllocBitArray(_internalBytes);
-            Span<ushort> adjacencyMatrix = stackalloc ushort[MaxTasks * MaxTasks];
-            Span<ushort> taskIndexMap = stackalloc ushort[MaxTasks];
+            Span<byte> adjacencyMatrix = stackalloc byte[MaxTasks * MaxTasks];
 
             var taskCount = Nodes.Count;
-
-            // Initialize the task index map
-            for (var i = 0; i < taskCount; i++) {
-                taskIndexMap[i] = Nodes[i].GlobalID;
-            }
 
             for (var i = 0; i < taskCount; i++) {
                 var task = Nodes[i];
 
                 foreach (var parentID in task.GetDependencies()) {
-                    var parentIdx = taskIndexMap.IndexOf(parentID, taskCount);
+                    var parentIdx = Nodes.Find(element => element.GlobalID == parentID);
                     var childIdx = i;
 
                     if (parentIdx > -1) {
@@ -148,28 +169,30 @@ namespace InitialPrefabs.TaskFlow {
                 }
             }
 
-            Console.WriteLine($"Sorted: {Sorted.Count}, Task Count: {taskCount}");
             if (Sorted.Count != taskCount) {
                 throw new InvalidOperationException("Cyclic dependencies occurred, aborting!");
             }
         }
 
-        public void Flush() {
-            foreach (var element in Sorted) {
-                // For each element, find the dependencies, check if they're done.
-                // Somehow I need to unify the types, I could check against the tracked Nodes
-                // TODO: INode may need to implement a way to check if the dependencies are done
-                // INode also needs to grab the metadata from the TaskUnitPool?
-                // Do I store a TaskMetadata handle too? I need to figure that out.
-                var idx = Array.BinarySearch(Nodes.Collection, 0, Nodes.Count, element);
-                if (idx > -1 && idx < Nodes.Count) {
+        public void Process() {
+            var inDegree = Edges.AsSpan();
+
+            // Main thread implementation
+            for (var i = 0; i < Sorted.Count; i++) {
+                (int taskIndex, INode<ushort> task) node = (i, Sorted[i]);
+
+                if (inDegree[i] == 0) {
+                    _ = Interlocked.Increment(ref RunningTasks);
+                    // TODO: Queue the tasks
                 }
             }
-            // TODO: Figure out how I can return the rented task handle.
+
+            // Implement a while loop which checks and waits for all tasks to finish?
+            // Maybe I should make this async?
         }
 
         [Conditional("DEBUG")]
-        public static void PrintAdjacencyMatrix(Span<ushort> adjacencyMatrix, int taskCount) {
+        public static void PrintAdjacencyMatrix(Span<byte> adjacencyMatrix, int taskCount) {
             Console.Write("    ");
             for (var col = 0; col < taskCount; col++) {
                 Console.Write($"{col,3} ");

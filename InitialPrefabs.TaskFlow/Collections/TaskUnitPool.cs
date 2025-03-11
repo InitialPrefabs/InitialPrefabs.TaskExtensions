@@ -14,45 +14,42 @@ namespace InitialPrefabs.TaskFlow.Collections {
     }
 
     public struct Workload : IEquatable<Workload> {
-        public byte ThreadCount;
-        public uint WorkDonePerThread;
+        public byte Total;
+        public uint BatchSize;
 
         public static Workload SingleUnit(uint length) {
             return new Workload {
-                ThreadCount = 1,
-                WorkDonePerThread = length
+                Total = 1,
+                BatchSize = length
             };
         }
 
         public static Workload MultiUnit(byte threadCount, uint length) {
             return new Workload {
-                ThreadCount = threadCount,
-                WorkDonePerThread = length
+                Total = threadCount,
+                BatchSize = length
             };
         }
 
         public bool Equals(Workload other) {
-            return other.ThreadCount == ThreadCount && WorkDonePerThread == other.WorkDonePerThread;
+            return other.Total == Total && BatchSize == other.BatchSize;
         }
     }
 
-    public class TaskMetadata<T0> : IEquatable<TaskMetadata<T0>> where T0 : struct, ITaskFor {
-        public T0 Task;
-        public TaskState State;
+    public class TaskMetadata : IEquatable<TaskMetadata> {
+        public TaskState State { get; private set; }
         public Workload Workload;
 
         public TaskMetadata() {
             Reset();
         }
 
-        public bool Equals(TaskMetadata<T0> other) {
+        public bool Equals(TaskMetadata other) {
             return other.State == State &&
-                other.Workload.Equals(Workload) &&
-                other.Task.GetHashCode() == Task.GetHashCode();
+                other.Workload.Equals(Workload);
         }
 
         public void Reset() {
-            Task = new T0();
             State = TaskState.NotStarted;
             Workload = new Workload();
         }
@@ -85,7 +82,7 @@ namespace InitialPrefabs.TaskFlow.Collections {
     /// </summary>
     public static class TaskUnitPool<T0> where T0 : struct, ITaskFor {
 
-        internal static readonly DynamicArray<TaskMetadata<T0>> Tasks;
+        internal static readonly DynamicArray<T0> Tasks;
         internal static readonly DynamicArray<ushort> FreeIndices;
 
         public static int Remaining => FreeIndices.Count;
@@ -93,29 +90,30 @@ namespace InitialPrefabs.TaskFlow.Collections {
 
         static TaskUnitPool() {
             var capacity = 5;
-            Tasks = new DynamicArray<TaskMetadata<T0>>(capacity);
+            Tasks = new DynamicArray<T0>(capacity);
             FreeIndices = new DynamicArray<ushort>(capacity);
 
             for (ushort i = 0; i < 5; i++) {
                 FreeIndices.Add(i);
-                Tasks.Add(new TaskMetadata<T0>());
+                Tasks.Add(new T0());
             }
         }
 
         /// <summary>
         /// Returns an allocated struct implementing <see cref="ITaskFor"/> to be copied into,
         /// </summary>
+        /// <param name="value">The task to perform a copy on into the TaskUnitPool.</param>
         /// <returns>A <see cref="LocalHandle{T0}"/> storing the index and Task container.</returns>
-        public static LocalHandle<T0> Rent() {
+        public static LocalHandle<T0> Rent(T0 value) {
             if (FreeIndices.IsEmpty) {
                 var index = (ushort)Tasks.Count;
-                Tasks.Add(new TaskMetadata<T0>());
+                Tasks.Add(value);
                 return new LocalHandle<T0>(index);
             } else {
                 var lastIndex = FreeIndices.Count - 1;
                 var freeIndex = FreeIndices[lastIndex];
                 FreeIndices.RemoveAtSwapback(lastIndex);
-                var task = Tasks[freeIndex];
+                Tasks[freeIndex] = value;
                 return new LocalHandle<T0>(freeIndex);
             }
         }
@@ -126,10 +124,6 @@ namespace InitialPrefabs.TaskFlow.Collections {
         }
 
         public static ref T0 TaskElementAt(LocalHandle<T0> handle) {
-            return ref Tasks.Collection[handle].Task;
-        }
-
-        public static ref TaskMetadata<T0> ElementAt(LocalHandle<T0> handle) {
             return ref Tasks.Collection[handle];
         }
 

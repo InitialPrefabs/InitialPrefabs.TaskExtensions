@@ -31,8 +31,8 @@ namespace InitialPrefabs.TaskFlow.Collections.Tests {
 
         [Test]
         public void TaskPoolRenting() {
-            var handle = TaskUnitPool<S>.Rent();
-            var handleA = TaskUnitPool<A>.Rent();
+            var handle = TaskUnitPool<S>.Rent(new S());
+            var handleA = TaskUnitPool<A>.Rent(new A());
             Assert.That((ushort)handle,
                     Is.EqualTo(TaskUnitPool<S>.Capacity - 1),
                     "Handle Index is not correct.");
@@ -45,7 +45,7 @@ namespace InitialPrefabs.TaskFlow.Collections.Tests {
                         "Failed to rent, the RemainingCount did not decrement.");
 
                 for (var i = 0; i < remaining; i++) {
-                    handles.Add(TaskUnitPool<S>.Rent());
+                    handles.Add(TaskUnitPool<S>.Rent(new S()));
                 }
                 Assert.That(TaskUnitPool<S>.Remaining,
                         Is.EqualTo(0),
@@ -68,7 +68,7 @@ namespace InitialPrefabs.TaskFlow.Collections.Tests {
         public void TaskPoolNewAllocation() {
             var remaining = TaskUnitPool<S>.Remaining;
             for (var i = 0; i < remaining; i++) {
-                var handle = TaskUnitPool<S>.Rent();
+                var handle = TaskUnitPool<S>.Rent(new S());
                 handles.Add(handle);
             }
 
@@ -76,7 +76,7 @@ namespace InitialPrefabs.TaskFlow.Collections.Tests {
                     Is.EqualTo(0),
                     "Did not empty!");
 
-            handles.Add(TaskUnitPool<S>.Rent());
+            handles.Add(TaskUnitPool<S>.Rent(new S()));
             Assert.That(TaskUnitPool<S>.Tasks,
                     Has.Count.EqualTo(6),
                     "Did not create a new Task to be stored.");
@@ -86,7 +86,7 @@ namespace InitialPrefabs.TaskFlow.Collections.Tests {
         public void AccessingTaskViaHandle() {
             var remaining = TaskUnitPool<S>.Remaining;
             for (var i = 0; i < remaining; i++) {
-                var handle = TaskUnitPool<S>.Rent();
+                var handle = TaskUnitPool<S>.Rent(new S());
                 handles.Add(handle);
             }
 

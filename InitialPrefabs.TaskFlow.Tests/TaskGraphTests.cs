@@ -16,7 +16,8 @@ namespace InitialPrefabs.TaskFlow.Tests {
 
         [SetUp]
         public void SetUp() {
-            var graph = TaskHandleExtensions.TaskGraph;
+            TaskHandleExtensions.Initialize(5);
+            var graph = TaskHandleExtensions.Graph;
             var bitArray = new NoAllocBitArray(graph.Bytes.AsByteSpan());
             var index = 0;
             foreach (var element in bitArray) {
@@ -61,16 +62,50 @@ namespace InitialPrefabs.TaskFlow.Tests {
             // 5 3
 
             var order = new[] { 0, 4, 1, 2, 5, 3 };
-            var sorted = TaskHandleExtensions.TaskGraph.Sorted;
-            TaskHandleExtensions.TaskGraph.Sort();
+            var sorted = TaskHandleExtensions.Graph.Sorted;
+            TaskHandleExtensions.Graph.Sort();
 
-            Assert.That(sorted, Has.Count.EqualTo(order.Length), "Mismatched tracking.");
+            Assert.That(
+                sorted,
+                Has.Count.EqualTo(order.Length),
+                "Mismatched tracking.");
 
             for (var i = 0; i < order.Length; i++) {
                 Assert.That(
-                        sorted[i].GlobalID,
-                        Is.EqualTo(order[i]), $"Failed at {i} with value: {order[i]}, mismatched order");
+                    sorted[i].GlobalID,
+                    Is.EqualTo(order[i]), $"Failed at {i} with value: {order[i]}, mismatched order");
             }
+        }
+
+        [Test]
+        public void MetadataTracking() {
+            var rand = new Random();
+            TaskHandleExtensions.Graph.Reset();
+            Span<Workload> a = stackalloc Workload[5];
+            for (var i = 0; i < 5; i++) {
+                var cond = rand.NextSingle() >= 0.5f;
+                _ = cond ? new S { }.ScheduleParallel(16, 32) : new S { }.Schedule();
+
+                var metadata = TaskHandleExtensions.Graph.Metadata[i];
+
+                Assert.Multiple(() => {
+                    Assert.That(metadata.State, Is.EqualTo(TaskState.NotStarted), "Task should not have been started.");
+                    var expected = cond ?
+                        new Workload { BatchSize = 32, Total = 16 } :
+                        new Workload { BatchSize = 0, Total = 1 };
+                    Assert.That(metadata.Workload, Is.EqualTo(expected), "Workload is not correct when scheduling");
+                    Assert.That(
+                        TaskHandleExtensions.Graph.Metadata,
+                        Has.Count.EqualTo(i + 1),
+                        $"Metadata not incremented, failed at {i}");
+                });
+            }
+
+            _ = new S { }.Schedule();
+
+            Assert.That(
+                TaskHandleExtensions.Graph.Metadata,
+                Has.Count.EqualTo(6), $"New Metadata has not been reserved");
         }
 
         [Test]
@@ -81,7 +116,7 @@ namespace InitialPrefabs.TaskFlow.Tests {
             handleA.DependsOn(handleC);
 
             var exception = Assert.Throws<InvalidOperationException>(static () => {
-                TaskHandleExtensions.TaskGraph.Sort();
+                TaskHandleExtensions.Graph.Sort();
             });
 
             Assert.That(exception, Is.Not.Null, "Exception should be thrown");

@@ -21,12 +21,20 @@ namespace InitialPrefabs.TaskFlow {
         internal DynamicArray<INode<ushort>> Nodes;
         internal DynamicArray<INode<ushort>> Sorted;
         internal DynamicArray<INode<ushort>> Queue;
+        internal DynamicArray<TaskMetadata> Metadata;
         internal MaxBytes Bytes;
 
         public void Reset() {
             foreach (var node in Nodes) {
                 node.Dispose();
             }
+            // Reset all metadata
+            for (var i = 0; i < Metadata.Collection.Length; i++) {
+                ref var collection = ref Metadata.Collection[i];
+                collection.Reset();
+            }
+
+            Metadata.Clear();
             Nodes.Clear();
             Sorted.Clear();
             Bytes = default;
@@ -36,13 +44,33 @@ namespace InitialPrefabs.TaskFlow {
             Nodes = new DynamicArray<INode<ushort>>(capacity);
             Sorted = new DynamicArray<INode<ushort>>(capacity);
             Queue = new DynamicArray<INode<ushort>>(capacity);
+            Metadata = new DynamicArray<TaskMetadata>(capacity);
+
+            for (var i = 0; i < capacity; i++) {
+                Metadata.Add(new TaskMetadata());
+            }
+            Metadata.Clear();
         }
 
-        public void Track(INode<ushort> trackedTask) {
+        public void Track(INode<ushort> trackedTask, Workload workload) {
             var span = Bytes.AsByteSpan();
             var bitArray = new NoAllocBitArray(span);
 
             if (!bitArray[trackedTask.GlobalID]) {
+                if (Nodes.Count >= Metadata.Capacity) {
+                    // We need to add a default metadata
+                    var metadata = new TaskMetadata();
+                    metadata.Workload = workload;
+                    Metadata.Add(metadata);
+                } else {
+                    Metadata.Count++;
+                    var metadata = Metadata[Nodes.Count];
+                    // Reset the task
+                    metadata.Reset();
+                    metadata.Workload = workload;
+                }
+
+                // When we track a task, the associated metadata must also be enabled
                 bitArray[trackedTask.GlobalID] = true;
                 Nodes.Add(trackedTask);
             }
@@ -137,6 +165,7 @@ namespace InitialPrefabs.TaskFlow {
                 if (idx > -1 && idx < Nodes.Count) {
                 }
             }
+            // TODO: Figure out how I can return the rented task handle.
         }
 
         [Conditional("DEBUG")]

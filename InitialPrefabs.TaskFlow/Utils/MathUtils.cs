@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
 
-namespace InitialPrefabs.TaskFlow {
+namespace InitialPrefabs.TaskFlow.Utils {
 
     public static class MathUtils {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

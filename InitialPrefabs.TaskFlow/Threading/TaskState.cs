@@ -1,0 +1,13 @@
+﻿namespace InitialPrefabs.TaskFlow.Threading {
+    /// <summary>
+    /// State of the Task.
+    /// </summary>
+    public enum TaskState {
+        NotStarted,
+        InProgress,
+        Success,
+        Faulted
+    }
+}
+
+

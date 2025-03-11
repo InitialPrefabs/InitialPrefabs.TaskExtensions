@@ -2,7 +2,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace InitialPrefabs.TaskFlow {
+namespace InitialPrefabs.TaskFlow.Threading {
 
     public interface INode<T> : IDisposable where T : unmanaged {
         ushort LocalID { get; }
@@ -104,7 +104,7 @@ namespace InitialPrefabs.TaskFlow {
         public static TaskHandle<T0> Schedule<T0>(this T0 task) where T0 : struct, ITaskFor {
             var handle = TaskUnitPool<T0>.Rent(task);
             var taskHandle = new TaskHandle<T0>(handle);
-            Graph.Track(taskHandle, new Workload {
+            Graph.Track(taskHandle, new TaskWorkload {
                 Total = 1,
                 BatchSize = 0
             });
@@ -123,7 +123,7 @@ namespace InitialPrefabs.TaskFlow {
                 }
             };
 
-            Graph.Track(taskHandle, new Workload {
+            Graph.Track(taskHandle, new TaskWorkload {
                 Total = 1,
                 BatchSize = 0
             });
@@ -143,7 +143,7 @@ namespace InitialPrefabs.TaskFlow {
             var taskHandle = new TaskHandle<T0>(handle) {
                 Parents = dependencies
             };
-            Graph.Track(taskHandle, new Workload {
+            Graph.Track(taskHandle, new TaskWorkload {
                 Total = 1,
                 BatchSize = 0
             });
@@ -155,7 +155,7 @@ namespace InitialPrefabs.TaskFlow {
             var localHandle = TaskUnitPool<T0>.Rent(task);
             var taskHandle = new TaskHandle<T0>(localHandle);
 
-            Graph.Track(taskHandle, new Workload {
+            Graph.Track(taskHandle, new TaskWorkload {
                 Total = total,
                 BatchSize = batchSize
             });
@@ -172,7 +172,7 @@ namespace InitialPrefabs.TaskFlow {
                 Parents = new FixedUInt16Array32() { dependsOn.GlobalID }
             };
 
-            Graph.Track(taskHandle, new Workload {
+            Graph.Track(taskHandle, new TaskWorkload {
                 Total = total,
                 BatchSize = batchSize
             });
@@ -194,7 +194,7 @@ namespace InitialPrefabs.TaskFlow {
                 Parents = parents
             };
 
-            Graph.Track(taskHandle, new Workload {
+            Graph.Track(taskHandle, new TaskWorkload {
                 Total = total,
                 BatchSize = batchSize
             });

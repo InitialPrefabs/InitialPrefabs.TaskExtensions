@@ -3,7 +3,7 @@ using System;
 using System.Diagnostics;
 using System.Threading;
 
-namespace InitialPrefabs.TaskFlow {
+namespace InitialPrefabs.TaskFlow.Threading {
 
     internal static class TaskGraphExtensions {
         public static Span<sbyte> AsSpan(this ref TaskGraph.Buffer matrix) {
@@ -78,7 +78,7 @@ namespace InitialPrefabs.TaskFlow {
             Metadata.Clear();
         }
 
-        public void Track(INode<ushort> trackedTask, Workload workload) {
+        public void Track(INode<ushort> trackedTask, TaskWorkload workload) {
             var span = Bytes.AsByteSpan();
             var bitArray = new NoAllocBitArray(span);
 

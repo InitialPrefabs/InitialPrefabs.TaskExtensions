@@ -2,7 +2,7 @@
 using NUnit.Framework;
 using System;
 
-namespace InitialPrefabs.TaskFlow.Tests {
+namespace InitialPrefabs.TaskFlow.Threading.Tests {
 
     public class TaskGraphTests {
 
@@ -81,7 +81,7 @@ namespace InitialPrefabs.TaskFlow.Tests {
         public void MetadataTracking() {
             var rand = new Random();
             TaskHandleExtensions.Graph.Reset();
-            Span<Workload> a = stackalloc Workload[5];
+            Span<TaskWorkload> a = stackalloc TaskWorkload[5];
             for (var i = 0; i < 5; i++) {
                 var cond = rand.NextSingle() >= 0.5f;
                 _ = cond ? new S { }.ScheduleParallel(16, 32) : new S { }.Schedule();
@@ -91,8 +91,8 @@ namespace InitialPrefabs.TaskFlow.Tests {
                 Assert.Multiple(() => {
                     Assert.That(metadata.State, Is.EqualTo(TaskState.NotStarted), "Task should not have been started.");
                     var expected = cond ?
-                        new Workload { BatchSize = 32, Total = 16 } :
-                        new Workload { BatchSize = 0, Total = 1 };
+                        new TaskWorkload { BatchSize = 32, Total = 16 } :
+                        new TaskWorkload { BatchSize = 0, Total = 1 };
                     Assert.That(metadata.Workload, Is.EqualTo(expected), "Workload is not correct when scheduling");
                     Assert.That(
                         TaskHandleExtensions.Graph.Metadata,

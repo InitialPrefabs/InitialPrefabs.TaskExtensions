@@ -1,7 +1,8 @@
-﻿using NUnit.Framework;
+﻿using InitialPrefabs.TaskFlow.Collections;
+using NUnit.Framework;
 using System;
 
-namespace InitialPrefabs.TaskFlow.Collections.Tests {
+namespace InitialPrefabs.TaskFlow.Threading.Tests {
 
     public class TaskUnitPoolTests {
 

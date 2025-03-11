@@ -1,22 +1,52 @@
 ﻿using System;
+using System.Runtime.InteropServices;
 
 namespace InitialPrefabs.TaskFlow.Threading {
 
-    public struct TaskWorkload : IEquatable<TaskWorkload> {
-        public byte Total;
-        public uint BatchSize;
+    public enum WorkloadType : byte {
+        Fake,
+        SingleThreadNoLoop,
+        SingleThreadLoop,
+        MultiThreadLoop
+    }
 
-        public static TaskWorkload SingleUnit(uint length) {
+    [StructLayout(LayoutKind.Explicit)]
+    public struct TaskWorkload : IEquatable<TaskWorkload> {
+        [FieldOffset(0)]
+        public WorkloadType Type;
+        [FieldOffset(1)]
+        public int Length;
+        [FieldOffset(1)]
+        public int Total;
+        [FieldOffset(5)]
+        public int BatchSize;
+
+        public readonly int ThreadCount => Type switch {
+            WorkloadType.Fake => 0,
+            WorkloadType.SingleThreadNoLoop => 1,
+            WorkloadType.SingleThreadLoop => 1,
+            WorkloadType.MultiThreadLoop => Total / BatchSize,
+            _ => throw new InvalidOperationException("Pick a valid TaskWorkload")
+        };
+
+        public static TaskWorkload SingleUnit() {
             return new TaskWorkload {
-                Total = 1,
-                BatchSize = length
+                Type = WorkloadType.SingleThreadNoLoop
             };
         }
 
-        public static TaskWorkload MultiUnit(byte threadCount, uint length) {
+        public static TaskWorkload LoopedSingleUnit(int length) {
             return new TaskWorkload {
-                Total = threadCount,
-                BatchSize = length
+                Type = WorkloadType.SingleThreadLoop,
+                Length = length
+            };
+        }
+
+        public static TaskWorkload MultiUnit(int total, int batchSize) {
+            return new TaskWorkload {
+                Type = WorkloadType.SingleThreadLoop,
+                Total = total,
+                BatchSize = batchSize
             };
         }
 
@@ -25,5 +55,3 @@ namespace InitialPrefabs.TaskFlow.Threading {
         }
     }
 }
-
-

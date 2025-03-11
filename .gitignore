@@ -37,3 +37,6 @@ msbuild.wrn
 .vs/
 .debug
 TestResult.xml
+CoverageReport
+coverage.info
+coverage.json

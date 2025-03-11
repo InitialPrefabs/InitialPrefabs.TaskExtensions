@@ -5,29 +5,29 @@ using System.Runtime.CompilerServices;
 
 namespace InitialPrefabs.TaskFlow.Collections {
 
+    public enum ResizeType {
+        /// <summary>
+        /// The <see cref="DynamicArray{T}.Count"/> does not grow or shrink when
+        /// forcibly resized.
+        /// </summary>
+        LeaveCountAsIs,
+        /// <summary>
+        /// Forces the <see cref="DynamicArray{T}"/> to match the new capacity.
+        /// </summary>
+        ForceCount,
+
+        /// <summary>
+        /// Forces the <see cref="DynamicArray{T}.Count"/> to be 0. This is effectively
+        /// a <see cref="DynamicArray{T}.Clear()"/>..
+        /// </summary>
+        ResetCount,
+    }
+
     /// <summary>
     /// Similar to a <see cref="List{T}"/> with an internal array. This avoids having to
     /// construct an array via a list as we can access the <see cref="Collection"/>.
     /// </summary>
     public class DynamicArray<T0> : IEnumerable<T0>, IReadOnlyList<T0> {
-
-        public enum ResizeType {
-            /// <summary>
-            /// The <see cref="DynamicArray{T}.Count"/> does not grow or shrink when
-            /// forcibly resized.
-            /// </summary>
-            LeaveCountAsIs,
-            /// <summary>
-            /// Forces the <see cref="DynamicArray{T}"/> to match the new capacity.
-            /// </summary>
-            ForceCount,
-
-            /// <summary>
-            /// Forces the <see cref="DynamicArray{T}.Count"/> to be 0. This is effectively
-            /// a <see cref="DynamicArray{T}.Clear()"/>..
-            /// </summary>
-            ResetCount,
-        }
 
         internal T0[] Collection;
 
@@ -101,15 +101,6 @@ namespace InitialPrefabs.TaskFlow.Collections {
         public int IndexOf<T1>(T0 element, T1 comparer) where T1 : IComparer<T0> {
             for (var i = 0; i < Count; i++) {
                 if (comparer.Compare(element, Collection[i]) == 0) {
-                    return i;
-                }
-            }
-            return -1;
-        }
-
-        public int IndexOf(Predicate<T0> predicate) {
-            for (var i = 0; i < Count; i++) {
-                if (predicate.Invoke(Collection[i])) {
                     return i;
                 }
             }

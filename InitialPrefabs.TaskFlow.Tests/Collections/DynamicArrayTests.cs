@@ -1,7 +1,15 @@
 ﻿using NUnit.Framework;
+using System.Collections.Generic;
 
 namespace InitialPrefabs.TaskFlow.Collections.Tests {
+
     public class DynamicArrayTests {
+
+        private struct IntComparer : IComparer<int> {
+            public readonly int Compare(int x, int y) {
+                return x.CompareTo(y);
+            }
+        }
 
         [Test]
         public void ArrayInitialized() {
@@ -86,6 +94,40 @@ namespace InitialPrefabs.TaskFlow.Collections.Tests {
                 Assert.That(array[^1],
                         Is.EqualTo(8), "The last element should be 7.");
             });
+        }
+
+        [Test]
+        public void ResizeTests() {
+            var array = new DynamicArray<int>(10);
+            for (var i = 0; i < 5; i++) {
+                array.Add(i);
+            }
+
+            Assert.That(array, Has.Count.EqualTo(5), "Not added to array.");
+            array.ForceResize(20, ResizeType.ResetCount);
+            Assert.That(array, Is.Empty, "Count did not reset");
+
+            array.ForceResize(10, ResizeType.ForceCount);
+            Assert.That(array, Has.Count.EqualTo(10), "Did not force count to the capacity");
+
+            array.ForceResize(30);
+            Assert.That(array, Has.Count.EqualTo(10), "Did not force count to the capacity");
+
+            array.ForceResize(20, (ResizeType)4);
+            Assert.That(array, Has.Count.EqualTo(10), "Did not force count to the capacity");
+        }
+
+        [Test]
+        public void FindingElementInArray() {
+            var array = new DynamicArray<int>(10, -1);
+            for (var i = 0; i < 10; i++) {
+                array.Add(i);
+            }
+
+            var idx = array.IndexOf(11, default(IntComparer));
+            Assert.That(idx, Is.EqualTo(-1), "Should not have found the value -11");
+            idx = array.IndexOf(4, default(IntComparer));
+            Assert.That(idx, Is.EqualTo(4), "Should not have found the value -11");
         }
     }
 }

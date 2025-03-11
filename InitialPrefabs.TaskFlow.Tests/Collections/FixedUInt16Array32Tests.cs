@@ -61,5 +61,42 @@ namespace InitialPrefabs.TaskFlow.Collections.Tests {
                 }
             });
         }
+
+        [Test]
+        public void EnumeratorTests() {
+            var fixedArray = new FixedUInt16Array32();
+
+            for (ushort i = 0; i < 5; i++) {
+                fixedArray.Add(i);
+            }
+
+            var it = fixedArray.GetEnumerator();
+
+            var count = 0;
+            while (it.MoveNext()) {
+                count++;
+            }
+            Assert.That(count, Is.EqualTo(5), "Enumeration failed");
+        }
+
+        [Test]
+        public void EqualityTest() {
+            var fixedArray = new FixedUInt16Array32();
+            var fixedArray1 = new FixedUInt16Array32();
+
+            for (ushort i = 0; i < 5; i++) {
+                fixedArray.Add(i);
+                fixedArray1.Add(i);
+            }
+
+            Assert.That(fixedArray, Is.EqualTo(fixedArray1), "Equality check failed");
+
+            fixedArray.Add(3);
+            Assert.That(fixedArray, Is.Not.EqualTo(fixedArray1), "Equality check succeeded, when it should not have.");
+
+            fixedArray1.Add(3);
+            fixedArray1.RemoveAt(0);
+            Assert.That(fixedArray, Is.Not.EqualTo(fixedArray1), "Equality check succeeded, when it should not have.");
+        }
     }
 }

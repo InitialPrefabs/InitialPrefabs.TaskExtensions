@@ -3,19 +3,26 @@ using System.Threading;
 
 namespace InitialPrefabs.TaskFlow.Threading {
 
-    public class TaskMetadata : IEquatable<TaskMetadata> {
-        public TaskState State { get; private set; }
-        public TaskWorkload Workload;
+    public class AtomicCancellationToken {
+        private int state;
 
-        private ManualResetEvent waitHandle;
-        private Exception err;
+        public bool IsCancellationRequested => state > 0;
 
-        public TaskMetadata() {
-            waitHandle = new ManualResetEvent(true);
-            Reset();
+        public void Cancel() {
+            _ = Interlocked.Exchange(ref state, 1);
         }
 
-        public void Run<T>(T task) where T : struct, ITaskFor {
+        public void Reset() {
+            _ = Interlocked.Exchange(ref state, 0);
+        }
+    }
+
+    public class TaskMetadata : IEquatable<TaskMetadata> {
+        public TaskState State;
+        public TaskWorkload Workload;
+
+        public TaskMetadata() {
+            Reset();
         }
 
         public bool Equals(TaskMetadata other) {
@@ -26,9 +33,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
         public void Reset() {
             State = TaskState.NotStarted;
             Workload = new TaskWorkload();
-            _ = waitHandle.Reset();
         }
     }
 }
-
 

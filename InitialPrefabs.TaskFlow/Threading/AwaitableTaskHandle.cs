@@ -1,8 +1,43 @@
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
-namespace InitialPrefabs.TaskFlow {
+namespace InitialPrefabs.TaskFlow.Threading {
+
+    // The idea is that a UnitTask represents a single allocated
+    // worker on a thread.
+    public class UnitTask {
+
+        public Exception Err { get; private set; }
+
+        private ManualResetEvent waitHandle;
+        private TaskState state;
+
+        public UnitTask() {
+            state = TaskState.NotStarted;
+            waitHandle = new ManualResetEvent(false);
+        }
+
+        public void Start([NotNull] Action action) {
+            state = TaskState.InProgress;
+            _ = ThreadPool.UnsafeQueueUserWorkItem(_ => {
+                try {
+                    action.Invoke();
+                } catch (Exception err) {
+                    this.Err = err;
+                } finally {
+                    state = Err != null ? TaskState.Faulted : TaskState.Completed;
+                    _ = waitHandle.Set();
+                }
+            }, null);
+        }
+
+        public void Reset() {
+            state = TaskState.NotStarted;
+            _ = waitHandle.Reset();
+        }
+    }
 
     public class AwaitableTaskHandleAwaiter : INotifyCompletion {
         public bool IsCompleted => handle.IsCompleted;

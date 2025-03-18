@@ -1,5 +1,6 @@
 ﻿using InitialPrefabs.TaskFlow.Collections;
 using System;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Threading;
 
@@ -46,6 +47,8 @@ namespace InitialPrefabs.TaskFlow.Threading {
         internal DynamicArray<TaskMetadata> Metadata; // TODO: Sort the metadata also?
         internal MaxBytes Bytes;
         internal Buffer Edges;
+
+        internal ConcurrentQueue<(int sortIndex, INode<ushort> node)> queue;
 
         internal int RunningTasks;
 
@@ -184,11 +187,17 @@ namespace InitialPrefabs.TaskFlow.Threading {
                 if (inDegree[i] == 0) {
                     _ = Interlocked.Increment(ref RunningTasks);
                     // TODO: Queue the tasks
+                    queue.Enqueue(node);
                 }
             }
 
-            // Implement a while loop which checks and waits for all tasks to finish?
-            // Maybe I should make this async?
+            while (RunningTasks > 0) {
+                if (queue.TryDequeue(out var data)) {
+                    var metadata = Metadata[data.sortIndex];
+                    var task = data.node.Task;
+                    var token = metadata.Token;
+                }
+            }
         }
 
         [Conditional("DEBUG")]

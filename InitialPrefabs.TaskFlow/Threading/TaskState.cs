@@ -5,7 +5,7 @@
     public enum TaskState {
         NotStarted,
         InProgress,
-        Success,
+        Completed,
         Faulted
     }
 }

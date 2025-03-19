@@ -8,7 +8,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
 
     // The idea is that a UnitTask represents a single allocated
     // worker on a thread.
-    public class RewindableUnitTask : IDisposable {
+    public sealed class RewindableUnitTask : IDisposable {
 
         public readonly ManualResetEvent WaitHandle;
 

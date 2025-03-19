@@ -7,7 +7,7 @@ using System.Threading;
 namespace InitialPrefabs.TaskFlow.Threading {
 
     internal static class TaskGraphExtensions {
-        public static Span<sbyte> AsSpan(this ref TaskGraph.Buffer matrix) {
+        public static Span<sbyte> AsSpan(this ref TaskGraph._Edges matrix) {
             unsafe {
                 fixed (sbyte* ptr = matrix.Data) {
                     return new Span<sbyte>(ptr, TaskGraph.MaxTasks);
@@ -15,7 +15,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
             }
         }
 
-        public static void Reset(this ref TaskGraph.Buffer matrix) {
+        public static void Reset(this ref TaskGraph._Edges matrix) {
             var span = matrix.AsSpan();
             foreach (ref var element in span) {
                 element = default;
@@ -27,7 +27,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
 
         internal const int MaxTasks = 256;
 
-        internal unsafe struct Buffer {
+        internal unsafe struct _Edges {
             public fixed sbyte Data[MaxTasks];
         }
 
@@ -43,12 +43,12 @@ namespace InitialPrefabs.TaskFlow.Threading {
 
         // Stores an ordered list of TaskHandles
         internal DynamicArray<INode<ushort>> Nodes;
-        internal DynamicArray<INode<ushort>> Sorted;
+        internal DynamicArray<(INode<ushort> node, UnmanagedRef<TaskMetadata> metadata)> Sorted;
         internal DynamicArray<TaskMetadata> Metadata; // TODO: Sort the metadata also?
         internal MaxBytes Bytes;
-        internal Buffer Edges;
+        internal _Edges Edges;
 
-        internal ConcurrentQueue<(int sortIndex, INode<ushort> node)> queue;
+        internal ConcurrentQueue<(INode<ushort> node, UnmanagedRef<TaskMetadata> metadata)> taskQueue;
 
         internal int RunningTasks;
 
@@ -67,12 +67,14 @@ namespace InitialPrefabs.TaskFlow.Threading {
             Metadata.Clear();
             Nodes.Clear();
             Sorted.Clear();
+
             Bytes = default;
+            Edges = default;
         }
 
         public TaskGraph(int capacity) {
             Nodes = new DynamicArray<INode<ushort>>(capacity);
-            Sorted = new DynamicArray<INode<ushort>>(capacity);
+            Sorted = new DynamicArray<(INode<ushort>, UnmanagedRef<TaskMetadata>)>(capacity);
             Metadata = new DynamicArray<TaskMetadata>(capacity);
 
             for (var i = 0; i < capacity; i++) {
@@ -88,12 +90,12 @@ namespace InitialPrefabs.TaskFlow.Threading {
             if (!bitArray[trackedTask.GlobalID]) {
                 if (Nodes.Count >= Metadata.Capacity) {
                     // We need to add a default metadata
-                    var metadata = new TaskMetadata();
+                    var metadata = TaskMetadata.Default();
                     metadata.Workload = workload;
                     Metadata.Add(metadata);
                 } else {
                     Metadata.Count++;
-                    var metadata = Metadata[Nodes.Count];
+                    ref var metadata = ref Metadata.ElementAt(Nodes.Count);
                     // Reset the task
                     metadata.Reset();
                     metadata.Workload = workload;
@@ -160,7 +162,8 @@ namespace InitialPrefabs.TaskFlow.Threading {
 
             while (queue.Count > 0) {
                 var taskIdx = queue.Dequeue();
-                Sorted.Add(Nodes[taskIdx]);
+                Sorted.Add((Nodes[taskIdx],
+                    new UnmanagedRef<TaskMetadata>(ref Metadata.ElementAt(taskIdx))));
                 for (ushort x = 0; x < taskCount; x++) {
                     if (adjacencyMatrix[(taskIdx * MaxTasks) + x] == 1) {
                         inDegree[x]--;
@@ -182,20 +185,35 @@ namespace InitialPrefabs.TaskFlow.Threading {
 
             // Main thread implementation
             for (var i = 0; i < Sorted.Count; i++) {
-                (int taskIndex, INode<ushort> task) node = (i, Sorted[i]);
+                var element = Sorted[i];
 
                 if (inDegree[i] == 0) {
                     _ = Interlocked.Increment(ref RunningTasks);
                     // TODO: Queue the tasks
-                    queue.Enqueue(node);
+                    taskQueue.Enqueue(element);
                 }
             }
 
             while (RunningTasks > 0) {
-                if (queue.TryDequeue(out var data)) {
-                    var metadata = Metadata[data.sortIndex];
-                    var task = data.node.Task;
-                    var token = metadata.Token;
+                if (taskQueue.TryDequeue(out var element)) {
+                    // We have to dequeue the task. Figure out how many Workers we need to spawn
+                    var workload = element.metadata.Ref.Workload;
+                    var task = element.node.Task;
+                    switch (workload.Type) {
+                        case WorkloadType.Fake:
+                            break;
+                        case WorkloadType.SingleThreadNoLoop: {
+                                // Create an action
+                                Action action = () => {
+                                    task.Execute(-1);
+                                };
+                                break;
+                            }
+                        case WorkloadType.SingleThreadLoop:
+                            break;
+                        case WorkloadType.MultiThreadLoop:
+                            break;
+                    }
                 }
             }
         }

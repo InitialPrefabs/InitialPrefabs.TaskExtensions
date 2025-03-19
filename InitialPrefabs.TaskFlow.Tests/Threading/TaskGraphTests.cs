@@ -43,6 +43,31 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
         }
 
         [Test]
+        public void TrackingTaskHandle() {
+            var graph = TaskHandleExtensions.Graph;
+            graph.Reset();
+            Assert.Multiple(() => {
+                Assert.That(graph.Nodes, Has.Count.EqualTo(0));
+                Assert.That(graph.Metadata, Has.Count.EqualTo(0));
+            });
+
+            var handleA = new S { }.ScheduleParallel(128, 32);
+
+            Assert.Multiple(() => {
+                Assert.That(graph.Nodes, Has.Count.EqualTo(1));
+                Assert.That(graph.Metadata, Has.Count.EqualTo(1));
+                var metadata = graph.Metadata[0];
+                Console.WriteLine(graph.Metadata.Count);
+                Console.WriteLine(metadata.Workload.ToString());
+
+                Assert.That(metadata.Workload.Type, Is.EqualTo(WorkloadType.MultiThreadLoop));
+                Assert.That(metadata.Workload.ThreadCount, Is.EqualTo(4));
+                Assert.That(metadata.Workload.Total, Is.EqualTo(128));
+                Assert.That(metadata.Workload.BatchSize, Is.EqualTo(32));
+            });
+        }
+
+        [Test]
         public void ChecksDependency() {
             var handleA = new S { }.Schedule();
             var handleB = new S { }.Schedule(handleA);
@@ -72,7 +97,7 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
 
             for (var i = 0; i < order.Length; i++) {
                 Assert.That(
-                    sorted[i].GlobalID,
+                    sorted[i].node.GlobalID,
                     Is.EqualTo(order[i]), $"Failed at {i} with value: {order[i]}, mismatched order");
             }
         }
@@ -89,11 +114,11 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
                 var metadata = TaskHandleExtensions.Graph.Metadata[i];
 
                 Assert.Multiple(() => {
-                    Assert.That(metadata.State, Is.EqualTo(TaskState.NotStarted), "Task should not have been started.");
+                    Assert.That(metadata.State, Is.EqualTo(TaskState.NotStarted),
+                        "Task should not have been started.");
                     var expected = cond ?
                         new TaskWorkload { BatchSize = 32, Total = 16 } :
                         new TaskWorkload { BatchSize = 0, Total = 1 };
-                    // Assert.That(metadata.Workload, Is.EqualTo(expected), "Workload is not correct when scheduling");
                     Assert.That(
                         TaskHandleExtensions.Graph.Metadata,
                         Has.Count.EqualTo(i + 1),

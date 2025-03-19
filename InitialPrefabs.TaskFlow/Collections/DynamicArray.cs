@@ -85,6 +85,11 @@ namespace InitialPrefabs.TaskFlow.Collections {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ref T0 ElementAt(int i) {
+            return ref Collection[i];
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void ForceResize(int capacity, ResizeType resizeType = ResizeType.LeaveCountAsIs) {
             var array = new T0[capacity];
             var length = MathUtils.Min(Collection.Length, capacity);

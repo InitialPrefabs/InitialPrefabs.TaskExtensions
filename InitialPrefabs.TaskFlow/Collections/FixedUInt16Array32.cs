@@ -72,6 +72,11 @@ namespace InitialPrefabs.TaskFlow.Collections {
     };
 
     public static class FixedUInt16Array32Extensions {
+
+        public static void Clear(this ref FixedUInt16Array32 fixedArray) {
+            fixedArray.Count = 0;
+        }
+
         public static void Add(this ref FixedUInt16Array32 fixedArray, ushort value) {
             if (fixedArray.Count >= FixedUInt16Array32.Capacity) {
                 return;

@@ -1,38 +1,35 @@
-﻿using System;
-using System.Threading;
+﻿using InitialPrefabs.TaskFlow.Collections;
+using System;
 
 namespace InitialPrefabs.TaskFlow.Threading {
 
-    public class AtomicCancellationToken {
-        private int state;
+    public struct TaskMetadata : IEquatable<TaskMetadata> {
 
-        public bool IsCancellationRequested => state > 0;
-
-        public void Cancel() {
-            _ = Interlocked.Exchange(ref state, 1);
-        }
-
-        public void Reset() {
-            _ = Interlocked.Exchange(ref state, 0);
-        }
-    }
-
-    public class TaskMetadata : IEquatable<TaskMetadata> {
         public TaskState State;
         public TaskWorkload Workload;
+        public AtomicCancellationToken Token;
+        public FixedUInt16Array32 ExceptionReferences;
 
-        public TaskMetadata() {
-            Reset();
+        public static TaskMetadata Default() {
+            return new TaskMetadata {
+                Token = new AtomicCancellationToken(),
+                State = TaskState.NotStarted,
+                Workload = default
+            };
         }
 
         public bool Equals(TaskMetadata other) {
             return other.State == State &&
                 other.Workload.Equals(Workload);
         }
+    }
 
-        public void Reset() {
-            State = TaskState.NotStarted;
-            Workload = new TaskWorkload();
+    public static class TaskMetadataExtensions {
+        public static void Reset(this ref TaskMetadata metadata) {
+            metadata.State = TaskState.NotStarted;
+            metadata.Workload = new TaskWorkload();
+            metadata.Token.Reset();
+            metadata.ExceptionReferences.Clear();
         }
     }
 }

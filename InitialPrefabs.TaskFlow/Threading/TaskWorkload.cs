@@ -53,5 +53,14 @@ namespace InitialPrefabs.TaskFlow.Threading {
         public bool Equals(TaskWorkload other) {
             return other.Total == Total && BatchSize == other.BatchSize;
         }
+
+        public override string ToString() {
+            return Type switch {
+                WorkloadType.Fake => "Fake",
+                WorkloadType.SingleThreadNoLoop => "Single Thread With No Loops",
+                WorkloadType.SingleThreadLoop => $"Single Thread With Loop Count: {Length}",
+                WorkloadType.MultiThreadLoop => $"Multiple Threads: {ThreadCount} with Total: {Total}, BatchSize: {BatchSize}",
+            };
+        }
     }
 }

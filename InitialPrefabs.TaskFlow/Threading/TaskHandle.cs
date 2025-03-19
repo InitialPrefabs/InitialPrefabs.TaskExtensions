@@ -208,6 +208,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
                 Parents = parents
             };
 
+            Console.WriteLine($"From Scheduling: {workload}");
             Graph.Track(taskHandle, workload);
             return taskHandle;
         }

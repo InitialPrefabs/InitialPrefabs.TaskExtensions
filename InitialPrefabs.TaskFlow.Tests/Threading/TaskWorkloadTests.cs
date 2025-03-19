@@ -50,8 +50,8 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
                 Assert.That(workload.Type,
                     Is.EqualTo(WorkloadType.MultiThreadLoop));
                 Assert.That(workload.ThreadCount,
-                    Is.EqualTo(3),
-                    "3 threads should spawn for the multi unit work");
+                    Is.EqualTo(4),
+                    "4 threads should spawn for the multi unit work");
             });
         }
 
@@ -63,8 +63,8 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
                 Assert.That(workload.Type,
                     Is.EqualTo(WorkloadType.MultiThreadLoop));
                 Assert.That(workload.ThreadCount,
-                    Is.EqualTo(4),
-                    "3 threads should spawn for the multi unit work");
+                    Is.EqualTo(5),
+                    "5 threads should spawn for the multi unit work");
             });
         }
     }

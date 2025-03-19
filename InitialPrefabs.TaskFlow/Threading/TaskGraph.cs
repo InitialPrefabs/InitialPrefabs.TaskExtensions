@@ -209,10 +209,34 @@ namespace InitialPrefabs.TaskFlow.Threading {
                                 };
                                 break;
                             }
-                        case WorkloadType.SingleThreadLoop:
-                            break;
-                        case WorkloadType.MultiThreadLoop:
-                            break;
+                        case WorkloadType.SingleThreadLoop: {
+                                Action action = () => {
+                                    var metadata = element.metadata;
+                                    for (var i = 0; i < workload.Length && !metadata.Ref.Token.IsCancellationRequested; i++) {
+                                        task.Execute(i);
+                                    }
+                                };
+                                break;
+                            }
+                        case WorkloadType.MultiThreadLoop: {
+                                for (var x = 0; x < workload.ThreadCount; x++) {
+                                    // Determine the slice
+                                    var startOffset = x * workload.BatchSize;
+                                    var diff = workload.Total - startOffset;
+                                    var length = diff > workload.BatchSize ? workload.BatchSize : diff;
+
+                                    Action action = () => {
+                                        var metadata = element.metadata;
+                                        for (var i = 0; i < length && !metadata.Ref.Token.IsCancellationRequested; i++) {
+                                            var idx = startOffset + i;
+                                            task.Execute(idx);
+                                        }
+                                    };
+
+                                    // Now create a unit task
+                                }
+                                break;
+                            }
                     }
                 }
             }

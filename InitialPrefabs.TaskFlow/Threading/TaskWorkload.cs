@@ -1,4 +1,5 @@
-﻿using System;
+﻿using InitialPrefabs.TaskFlow.Utils;
+using System;
 using System.Runtime.InteropServices;
 
 namespace InitialPrefabs.TaskFlow.Threading {
@@ -25,7 +26,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
             WorkloadType.Fake => 0,
             WorkloadType.SingleThreadNoLoop => 1,
             WorkloadType.SingleThreadLoop => 1,
-            WorkloadType.MultiThreadLoop => Total / BatchSize,
+            WorkloadType.MultiThreadLoop => MathUtils.CeilToIntDivision(Total, BatchSize),
             _ => throw new InvalidOperationException("Pick a valid TaskWorkload")
         };
 

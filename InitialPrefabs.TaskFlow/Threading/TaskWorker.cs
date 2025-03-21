@@ -1,22 +1,28 @@
 ﻿using InitialPrefabs.TaskFlow.Collections;
 using InitialPrefabs.TaskFlow.Utils;
 using System;
-using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 
 namespace InitialPrefabs.TaskFlow.Threading {
 
     // The idea is that a UnitTask represents a single allocated
     // worker on a thread.
-    public sealed class RewindableUnitTask : IDisposable {
+    public sealed class TaskWorker : IDisposable {
 
-        public readonly ManualResetEvent WaitHandle;
+        internal readonly ManualResetEvent WaitHandle;
 
-        public RewindableUnitTask() {
+        public TaskWorker() {
             WaitHandle = new ManualResetEvent(false);
         }
 
-        public RewindableUnitTask Start([NotNull] Action action, UnmanagedRef<TaskMetadata> metadata) {
+        public void Start(Action action, UnmanagedRef<TaskMetadata> metadata) {
+            ref var m = ref metadata.Ref;
+
+            if (m.State != TaskState.NotStarted) {
+                throw new InvalidOperationException("Cannot reuse the same RewindableUnitTask because the " +
+                    "associated metadata indicates a thread is inflight.");
+            }
+
             // When we start a new Unit Task, we have to go through the try catch finally block
             // to safely execute each thread
             _ = ThreadPool.UnsafeQueueUserWorkItem(_ => {
@@ -34,8 +40,6 @@ namespace InitialPrefabs.TaskFlow.Threading {
                     Complete();
                 }
             }, null);
-
-            return this;
         }
 
         public void Wait() {
@@ -54,7 +58,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
             WaitHandle.Dispose();
         }
 
-        public static void WaitAll(Span<RewindableUnitTask> tasks) {
+        public static void WaitAll(Span<TaskWorker> tasks) {
             foreach (var task in tasks) {
                 task.Wait();
             }

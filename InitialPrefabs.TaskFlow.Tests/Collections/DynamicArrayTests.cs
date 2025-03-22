@@ -1,5 +1,6 @@
 ﻿using NUnit.Framework;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace InitialPrefabs.TaskFlow.Collections.Tests {
 
@@ -128,6 +129,30 @@ namespace InitialPrefabs.TaskFlow.Collections.Tests {
             Assert.That(idx, Is.EqualTo(-1), "Should not have found the value -11");
             idx = array.IndexOf(4, default(IntComparer));
             Assert.That(idx, Is.EqualTo(4), "Should not have found the value -11");
+        }
+
+        [Test]
+        public void AddingToCollectionFromMultipleThreads() {
+            var array = new DynamicArray<int>(10);
+            var taskA = Task.Factory.StartNew(() => {
+                array.AsyncAdd(1);
+            });
+
+            var taskB = Task.Factory.StartNew(() => {
+                array.AsyncAdd(10);
+            });
+
+            Task.WaitAll(taskA, taskB);
+
+            Assert.Multiple(() => {
+                Assert.That(array, Has.Count.EqualTo(2),
+                    "2 elements should've been added to the dynamic array");
+
+                var actual = array.Find(x => x == 1);
+                Assert.That(actual, Is.GreaterThanOrEqualTo(0), "The value 1 should've been added");
+                actual = array.Find(x => x == 10);
+                Assert.That(actual, Is.GreaterThanOrEqualTo(0), "The value 10 should've been added");
+            });
         }
     }
 }

@@ -94,7 +94,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
                     metadata.Workload = workload;
                     Metadata.Add(metadata);
                 } else {
-                    Metadata.Count++;
+                    Metadata.count++;
                     ref var metadata = ref Metadata.ElementAt(Nodes.Count);
                     // Reset the task
                     metadata.Reset();

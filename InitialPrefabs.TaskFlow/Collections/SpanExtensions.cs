@@ -13,4 +13,3 @@ namespace InitialPrefabs.TaskFlow.Collections {
     }
 }
 
-

@@ -3,6 +3,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using System.Threading;
 
 namespace InitialPrefabs.TaskFlow.Collections {
 
@@ -35,11 +36,12 @@ namespace InitialPrefabs.TaskFlow.Collections {
         public int Capacity => Collection.Length;
         public bool IsEmpty => Count == 0;
 
-        public int Count { get; internal set; }
+        public int Count => count;
+        internal int count;
 
         public DynamicArray(int capacity) {
             Collection = new T0[capacity];
-            Count = 0;
+            count = 0;
         }
 
         public DynamicArray(int capacity, T0 defaultValue) : this(capacity) {
@@ -59,26 +61,33 @@ namespace InitialPrefabs.TaskFlow.Collections {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Clear() {
-            Count = 0;
+            count = 0;
+        }
+
+        public void AsyncAdd(T0 value) {
+            if (Count >= Capacity) {
+                throw new InvalidOperationException("Cannot add value to the internal buffer due to maximizing capacity.");
+            }
+            Collection[Interlocked.Increment(ref count) - 1] = value;
         }
 
         public void Add(T0 value) {
             if (Count >= Capacity) {
                 ForceResize(Count + 1);
             }
-            Collection[Count++] = value;
+            Collection[count++] = value;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void RemoveAtSwapback(int index) {
-            Count--;
+            count--;
             var last = Collection[Count];
             Collection[index] = last;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void RemoveAt(int index) {
-            Count--;
+            count--;
             for (var i = index; i < Count; i++) {
                 Collection[i] = Collection[i + 1];
             }
@@ -96,7 +105,7 @@ namespace InitialPrefabs.TaskFlow.Collections {
             Array.Copy(Collection, array, length);
             Collection = array;
 
-            Count = resizeType switch {
+            count = resizeType switch {
                 ResizeType.ForceCount => capacity,
                 ResizeType.ResetCount => 0,
                 ResizeType.LeaveCountAsIs => Count,

@@ -31,7 +31,17 @@ namespace InitialPrefabs.TaskFlow.Threading {
             public fixed sbyte Data[MaxTasks];
         }
 
-        internal unsafe struct MaxBytes {
+        internal unsafe struct _TaskBuffer {
+            public fixed byte Data[MaxTasks];
+
+            public readonly Span<byte> AsSpan() {
+                fixed (byte* ptr = Data) {
+                    return new Span<byte>(ptr, MaxTasks);
+                }
+            }
+        }
+
+        internal unsafe struct MaxByteBools {
             internal fixed byte Data[MaxTasks / 4];
 
             public readonly Span<byte> AsByteSpan() {
@@ -45,12 +55,15 @@ namespace InitialPrefabs.TaskFlow.Threading {
         internal DynamicArray<INode<ushort>> Nodes;
         internal DynamicArray<(INode<ushort> node, UnmanagedRef<TaskMetadata> metadata)> Sorted;
         internal DynamicArray<TaskMetadata> Metadata; // TODO: Sort the metadata also?
-        internal MaxBytes Bytes;
+        internal MaxByteBools Bytes;
         internal _Edges Edges;
 
+        // Task Queue section
         internal ConcurrentQueue<(INode<ushort> node, UnmanagedRef<TaskMetadata> metadata)> taskQueue;
-
         internal int RunningTasks;
+        internal TaskWorker[] Workers;
+        internal _TaskBuffer Free;
+        internal _TaskBuffer Used;
 
         public void Reset() {
             RunningTasks = 0;
@@ -81,6 +94,29 @@ namespace InitialPrefabs.TaskFlow.Threading {
                 Metadata.Add(new TaskMetadata());
             }
             Metadata.Clear();
+
+            Workers = new TaskWorker[MaxTasks];
+            var freeList = new NoAllocList<byte>(Free.AsSpan());
+            for (var i = 0; i < MaxTasks; i++) {
+                Workers[i] = new TaskWorker();
+                freeList.Add((byte)i);
+            }
+        }
+
+        internal WorkerHandle RequestWorker() {
+            var freeList = new NoAllocList<byte>(Free.AsSpan());
+            var useList = new NoAllocList<byte>(Used.AsSpan());
+
+            var freeWorker = freeList[0];
+            useList.Add(freeWorker);
+
+            return new WorkerHandle(freeWorker, Workers);
+        }
+
+        internal void ReturnWorker() {
+            var freeList = new NoAllocList<byte>(Free.AsSpan());
+            var useList = new NoAllocList<byte>(Used.AsSpan());
+            throw new NotImplementedException();
         }
 
         public void Track(INode<ushort> trackedTask, TaskWorkload workload) {
@@ -199,6 +235,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
                     // We have to dequeue the task. Figure out how many Workers we need to spawn
                     var workload = element.metadata.Ref.Workload;
                     var task = element.node.Task;
+
                     switch (workload.Type) {
                         case WorkloadType.Fake:
                             break;
@@ -207,6 +244,8 @@ namespace InitialPrefabs.TaskFlow.Threading {
                                 Action action = () => {
                                     task.Execute(-1);
                                 };
+
+                                // Launch a worker
                                 break;
                             }
                         case WorkloadType.SingleThreadLoop: {

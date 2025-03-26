@@ -66,7 +66,8 @@ namespace InitialPrefabs.TaskFlow.Collections {
 
         public void AsyncAdd(T0 value) {
             if (Count >= Capacity) {
-                throw new InvalidOperationException("Cannot add value to the internal buffer due to maximizing capacity.");
+                throw new InvalidOperationException(
+                    "Cannot add value to the internal buffer due to maximizing capacity.");
             }
             Collection[Interlocked.Increment(ref count) - 1] = value;
         }

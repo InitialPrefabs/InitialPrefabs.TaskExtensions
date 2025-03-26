@@ -5,6 +5,19 @@ using System.Threading;
 
 namespace InitialPrefabs.TaskFlow.Threading {
 
+    internal readonly struct WorkerHandle {
+        public readonly TaskWorker Worker => Workers[Id];
+
+        private readonly byte Id;
+
+        private readonly TaskWorker[] Workers;
+
+        public WorkerHandle(byte id, TaskWorker[] workers) {
+            Id = id;
+            Workers = workers;
+        }
+    }
+
     // The idea is that a UnitTask represents a single allocated
     // worker on a thread.
     public sealed class TaskWorker : IDisposable {

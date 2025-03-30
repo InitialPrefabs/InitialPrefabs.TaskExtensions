@@ -5,15 +5,19 @@ using System.Threading;
 
 namespace InitialPrefabs.TaskFlow.Threading {
 
-    internal readonly struct WorkerHandle : IEquatable<WorkerHandle> {
+    public readonly struct WorkerHandle : IEquatable<WorkerHandle> {
         private readonly byte Id;
 
         public WorkerHandle(byte id) {
             Id = id;
         }
 
-        public bool Equals(WorkerHandle other) {
+        public readonly bool Equals(WorkerHandle other) {
             return other.Id == Id;
+        }
+
+        public static implicit operator byte(WorkerHandle value) {
+            return value.Id;
         }
     }
 

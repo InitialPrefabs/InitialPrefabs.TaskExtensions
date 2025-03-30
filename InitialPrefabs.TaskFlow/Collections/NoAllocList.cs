@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.CompilerServices;
 
 namespace InitialPrefabs.TaskFlow.Collections {
 
@@ -29,6 +30,12 @@ namespace InitialPrefabs.TaskFlow.Collections {
             Count = 0;
         }
 
+        public NoAllocList(Span<T> span, int count) {
+            Span = span;
+            Length = span.Length;
+            Count = count;
+        }
+
         public void Add(T item) {
             if (Count >= Length) {
                 return;
@@ -52,6 +59,7 @@ namespace InitialPrefabs.TaskFlow.Collections {
 
     public static class NoAllocListExtensions {
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void Add<T>(this ref NoAllocList<T> list, T item) where T : unmanaged {
             if (list.Count >= list.Length) {
                 return;
@@ -59,29 +67,35 @@ namespace InitialPrefabs.TaskFlow.Collections {
             list.Span[list.Count++] = item;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void RemoveAtSwapback<T>(this ref NoAllocList<T> list, int index) where T : unmanaged {
             list.Count--;
             var last = list.Span[list.Count];
             list.Span[index] = last;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void RemoveAt<T>(this ref NoAllocList<T> list, int index) where T : unmanaged {
             list.Count--;
             for (var i = index; i < list.Count; i++) {
-                list.Span[index] = list.Span[index + 1];
+                list.Span[i] = list.Span[i + 1];
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ref T ElementAt<T>(this ref NoAllocList<T> list, int index) where T : unmanaged {
             return ref list.Span[index];
         }
 
-        public static int IndexOf<T>(this in NoAllocList<T> list, in T item) where T : unmanaged, IEquatable<T> {
-            for (var i = 0; i < list.Count; i++) {
-                if (item.Equals(list[i])) {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int IndexOf<T>(this in NoAllocList<T> list, T item) where T : unmanaged, IEquatable<T> {
+            for (var i = 0; i < list.Length; i++) {
+                var element = list[i];
+                if (element.Equals(item)) {
                     return i;
                 }
             }
+
             return -1;
         }
     }

@@ -51,6 +51,7 @@ namespace InitialPrefabs.TaskFlow.Collections {
     }
 
     public static class NoAllocListExtensions {
+
         public static void Add<T>(this ref NoAllocList<T> list, T item) where T : unmanaged {
             if (list.Count >= list.Length) {
                 return;
@@ -73,6 +74,15 @@ namespace InitialPrefabs.TaskFlow.Collections {
 
         public static ref T ElementAt<T>(this ref NoAllocList<T> list, int index) where T : unmanaged {
             return ref list.Span[index];
+        }
+
+        public static int IndexOf<T>(this in NoAllocList<T> list, in T item) where T : unmanaged, IEquatable<T> {
+            for (var i = 0; i < list.Count; i++) {
+                if (item.Equals(list[i])) {
+                    return i;
+                }
+            }
+            return -1;
         }
     }
 }

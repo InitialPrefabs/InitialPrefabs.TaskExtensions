@@ -5,16 +5,15 @@ using System.Threading;
 
 namespace InitialPrefabs.TaskFlow.Threading {
 
-    internal readonly struct WorkerHandle {
-        public readonly TaskWorker Worker => Workers[Id];
-
+    internal readonly struct WorkerHandle : IEquatable<WorkerHandle> {
         private readonly byte Id;
 
-        private readonly TaskWorker[] Workers;
-
-        public WorkerHandle(byte id, TaskWorker[] workers) {
+        public WorkerHandle(byte id) {
             Id = id;
-            Workers = workers;
+        }
+
+        public bool Equals(WorkerHandle other) {
+            return other.Id == Id;
         }
     }
 
@@ -32,7 +31,8 @@ namespace InitialPrefabs.TaskFlow.Threading {
             ref var m = ref metadata.Ref;
 
             if (m.State != TaskState.NotStarted) {
-                throw new InvalidOperationException("Cannot reuse the same RewindableUnitTask because the " +
+                throw new InvalidOperationException(
+                    "Cannot reuse the same RewindableUnitTask because the " +
                     "associated metadata indicates a thread is inflight.");
             }
 

@@ -61,6 +61,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
         // Task Queue section
         internal ConcurrentQueue<(INode<ushort> node, UnmanagedRef<TaskMetadata> metadata)> taskQueue;
         internal int RunningTasks;
+
         internal TaskWorker[] Workers;
         internal _TaskBuffer Free;
         internal _TaskBuffer Used;
@@ -113,10 +114,9 @@ namespace InitialPrefabs.TaskFlow.Threading {
             return new WorkerHandle(freeWorker, Workers);
         }
 
-        internal void ReturnWorker() {
-            var freeList = new NoAllocList<byte>(Free.AsSpan());
+        internal void ReturnWorker(WorkerHandle handle) {
+            var freeList = new NoAllocList<WorkerHandle>(Free.AsSpan());
             var useList = new NoAllocList<byte>(Used.AsSpan());
-            throw new NotImplementedException();
         }
 
         public void Track(INode<ushort> trackedTask, TaskWorkload workload) {

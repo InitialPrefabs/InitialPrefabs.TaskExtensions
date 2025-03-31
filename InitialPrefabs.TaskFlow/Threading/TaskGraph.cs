@@ -64,9 +64,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
         internal ConcurrentQueue<(INode<ushort> node, UnmanagedRef<TaskMetadata> metadata)> taskQueue;
         internal int RunningTasks;
 
-        internal TaskWorker[] Workers;
-        internal _TaskBuffer Free;
-        internal _TaskBuffer Used;
+        internal WorkerBuffer WorkerBuffer;
 
         public void Reset() {
             RunningTasks = 0;
@@ -99,26 +97,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
             }
             Metadata.Clear();
 
-            Workers = new TaskWorker[TaskConstants.MaxTasks];
-            var freeList = new NoAllocList<byte>(Free.AsSpan());
-            for (var i = 0; i < capacity; i++) {
-                Workers[i] = new TaskWorker();
-                freeList.Add((byte)i);
-            }
-        }
-
-        internal WorkerHandle RequestWorker() {
-            var freeList = new NoAllocList<byte>(Free.AsSpan());
-            var useList = new NoAllocList<byte>(Used.AsSpan());
-            var freeWorker = freeList[0];
-            useList.Add(freeWorker);
-            return new WorkerHandle(freeWorker);
-        }
-
-        internal void ReturnWorker(WorkerHandle handle) {
-            // var freeList = new NoAllocList<WorkerHandle>(Free.AsSpan());
-            // var useList = new NoAllocList<byte>(Used.AsSpan());
-            // var idx = useList.IndexOf
+            WorkerBuffer = new WorkerBuffer();
         }
 
         public void Track(INode<ushort> trackedTask, TaskWorkload workload) {
@@ -180,7 +159,8 @@ namespace InitialPrefabs.TaskFlow.Threading {
                 var task = Nodes[i];
 
                 foreach (var parentID in task.GetDependencies()) {
-                    var parentIdx = Nodes.Find(element => element.GlobalID == parentID);
+                    var parentIdx = Nodes.Find(
+                        element => element.GlobalID == parentID);
                     var childIdx = i;
 
                     if (parentIdx > -1) {
@@ -262,24 +242,24 @@ namespace InitialPrefabs.TaskFlow.Threading {
                                 break;
                             }
                         case WorkloadType.MultiThreadLoop: {
-                                for (var x = 0; x < workload.ThreadCount; x++) {
-                                    // Determine the slice
-                                    var startOffset = x * workload.BatchSize;
-                                    var diff = workload.Total - startOffset;
-                                    var length = diff > workload.BatchSize ? workload.BatchSize : diff;
+                            for (var x = 0; x < workload.ThreadCount; x++) {
+                                // Determine the slice
+                                var startOffset = x * workload.BatchSize;
+                                var diff = workload.Total - startOffset;
+                                var length = diff > workload.BatchSize ? workload.BatchSize : diff;
 
-                                    Action action = () => {
-                                        var metadata = element.metadata;
-                                        for (var i = 0; i < length && !metadata.Ref.Token.IsCancellationRequested; i++) {
-                                            var idx = startOffset + i;
-                                            task.Execute(idx);
-                                        }
-                                    };
+                                Action action = () => {
+                                    var metadata = element.metadata;
+                                    for (var i = 0; i < length && !metadata.Ref.Token.IsCancellationRequested; i++) {
+                                        var idx = startOffset + i;
+                                        task.Execute(idx);
+                                    }
+                                };
 
-                                    // Now create a unit task
-                                }
-                                break;
+                                // Now create a unit task
                             }
+                            break;
+                        }
                     }
                 }
             }

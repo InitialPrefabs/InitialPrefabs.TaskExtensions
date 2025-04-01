@@ -80,6 +80,12 @@ namespace InitialPrefabs.TaskFlow.Threading {
                 task.Wait();
             }
         }
+
+        public static void WaitAll(ReadOnlySpan<TaskWorker> tasks) {
+            foreach (var task in tasks) {
+                task.Wait();
+            }
+        }
     }
 }
 

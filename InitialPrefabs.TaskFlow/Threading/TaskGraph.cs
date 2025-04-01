@@ -65,6 +65,8 @@ namespace InitialPrefabs.TaskFlow.Threading {
         internal int RunningTasks;
 
         internal WorkerBuffer WorkerBuffer;
+        internal DynamicArray<TaskWorker> Workers;
+        internal DynamicArray<WorkerHandle> Handles;
 
         public void Reset() {
             RunningTasks = 0;
@@ -98,6 +100,8 @@ namespace InitialPrefabs.TaskFlow.Threading {
             Metadata.Clear();
 
             WorkerBuffer = new WorkerBuffer();
+            Workers = new DynamicArray<TaskWorker>(TaskConstants.MaxTasks);
+            Handles = new DynamicArray<WorkerHandle>(TaskConstants.MaxTasks);
         }
 
         public void Track(INode<ushort> trackedTask, TaskWorkload workload) {
@@ -215,6 +219,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
             }
 
             while (RunningTasks > 0) {
+                // We dequeued the tasks and tracked them, but we need to somehow wait
                 if (taskQueue.TryDequeue(out var element)) {
                     // We have to dequeue the task. Figure out how many Workers we need to spawn
                     var workload = element.metadata.Ref.Workload;
@@ -229,7 +234,11 @@ namespace InitialPrefabs.TaskFlow.Threading {
                                     task.Execute(-1);
                                 };
 
-                                // Launch a worker
+                                // Launch a worker, and we have to store the worker handle and the metadata.
+                                var rented = WorkerBuffer.Rent();
+                                rented.worker.Start(action, element.metadata);
+                                Workers.Add(rented.worker);
+                                Handles.Add(rented.handle);
                                 break;
                             }
                         case WorkloadType.SingleThreadLoop: {
@@ -261,6 +270,13 @@ namespace InitialPrefabs.TaskFlow.Threading {
                             break;
                         }
                     }
+                }
+                // If we drained the first tasks from the task queue, we need to wait.
+                if (taskQueue.IsEmpty) {
+                    var waitHandles = Workers.AsReadOnlySpan();
+                    TaskWorker.WaitAll(waitHandles);
+                    // Now we have to decrement and enqueue more tasks.
+                    // TODO: Check if any of the Workers faulted too.
                 }
             }
         }

@@ -98,8 +98,14 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
             for (var i = 0; i < order.Length; i++) {
                 Assert.That(
                     sorted[i].node.GlobalID,
-                    Is.EqualTo(order[i]), $"Failed at {i} with value: {order[i]}, mismatched order");
+                    Is.EqualTo(order[i]),
+                    $"Failed at {i} with value: {order[i]}, mismatched order");
             }
+
+            TaskHandleExtensions.Graph.EnqueueTasks();
+            Assert.That(
+                TaskHandleExtensions.Graph.TaskQueue,
+                Has.Count.EqualTo(2));
         }
 
         [Test]

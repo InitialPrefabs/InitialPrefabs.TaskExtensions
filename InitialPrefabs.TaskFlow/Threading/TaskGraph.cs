@@ -1,4 +1,5 @@
 ﻿using InitialPrefabs.TaskFlow.Collections;
+using InitialPrefabs.TaskFlow.Utils;
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -61,12 +62,30 @@ namespace InitialPrefabs.TaskFlow.Threading {
         internal _Edges Edges;
 
         // Task Queue section
-        internal ConcurrentQueue<(INode<ushort> node, UnmanagedRef<TaskMetadata> metadata)> taskQueue;
+        internal ConcurrentQueue<(INode<ushort> node, UnmanagedRef<TaskMetadata> metadata)> TaskQueue;
         internal int RunningTasks;
 
         internal WorkerBuffer WorkerBuffer;
         internal DynamicArray<TaskWorker> Workers;
-        internal DynamicArray<WorkerHandle> Handles;
+        internal DynamicArray<(WorkerHandle workerHandle, UnmanagedRef<TaskMetadata> metadata)> Handles;
+
+
+        // TODO: Write an allocation strategy
+        public TaskGraph(int capacity) {
+            Nodes = new DynamicArray<INode<ushort>>(capacity);
+            Sorted = new DynamicArray<(INode<ushort>, UnmanagedRef<TaskMetadata>)>(capacity);
+            Metadata = new DynamicArray<TaskMetadata>(capacity);
+
+            for (var i = 0; i < capacity; i++) {
+                Metadata.Add(new TaskMetadata());
+            }
+            Metadata.Clear();
+
+            TaskQueue = new ConcurrentQueue<(INode<ushort> node, UnmanagedRef<TaskMetadata> metadata)>();
+            WorkerBuffer = new WorkerBuffer();
+            Workers = new DynamicArray<TaskWorker>(TaskConstants.MaxTasks);
+            Handles = new DynamicArray<(WorkerHandle, UnmanagedRef<TaskMetadata>)>(TaskConstants.MaxTasks);
+        }
 
         public void Reset() {
             RunningTasks = 0;
@@ -86,22 +105,6 @@ namespace InitialPrefabs.TaskFlow.Threading {
 
             Bytes = default;
             Edges = default;
-        }
-
-        // TODO: Write an allocation strategy
-        public TaskGraph(int capacity) {
-            Nodes = new DynamicArray<INode<ushort>>(capacity);
-            Sorted = new DynamicArray<(INode<ushort>, UnmanagedRef<TaskMetadata>)>(capacity);
-            Metadata = new DynamicArray<TaskMetadata>(capacity);
-
-            for (var i = 0; i < capacity; i++) {
-                Metadata.Add(new TaskMetadata());
-            }
-            Metadata.Clear();
-
-            WorkerBuffer = new WorkerBuffer();
-            Workers = new DynamicArray<TaskWorker>(TaskConstants.MaxTasks);
-            Handles = new DynamicArray<WorkerHandle>(TaskConstants.MaxTasks);
         }
 
         public void Track(INode<ushort> trackedTask, TaskWorkload workload) {
@@ -170,6 +173,9 @@ namespace InitialPrefabs.TaskFlow.Threading {
                     if (parentIdx > -1) {
                         adjacencyMatrix[(parentIdx * TaskConstants.MaxTasks) + childIdx] = 1;
                         inDegree[childIdx]++;
+                        unsafe {
+                            Console.WriteLine($"Child: {childIdx}: {inDegree[childIdx]}, {Edges.Data[childIdx]}");
+                        }
                     }
                 }
             }
@@ -184,23 +190,44 @@ namespace InitialPrefabs.TaskFlow.Threading {
                 }
             }
 
+            var _edgeCopy = Edges;
+            var copyInDegree = _edgeCopy.AsSpan();
+
             while (queue.Count > 0) {
                 var taskIdx = queue.Dequeue();
                 Sorted.Add((Nodes[taskIdx],
                     new UnmanagedRef<TaskMetadata>(ref Metadata.ElementAt(taskIdx))));
                 for (ushort x = 0; x < taskCount; x++) {
                     if (adjacencyMatrix[(taskIdx * TaskConstants.MaxTasks) + x] == 1) {
-                        inDegree[x]--;
+                        copyInDegree[x]--;
 
-                        if (inDegree[x] == 0) {
+                        if (copyInDegree[x] == 0) {
                             _ = queue.TryEnqueue(x);
                         }
                     }
                 }
             }
 
+            for (var i = 0; i < inDegree.Length; i++) {
+                Console.WriteLine($"{i}: {inDegree[i]}");
+            }
+
             if (Sorted.Count != taskCount) {
                 throw new InvalidOperationException("Cyclic dependencies occurred, aborting!");
+            }
+        }
+
+        public void EnqueueTasks() {
+            var inDegree = Edges.AsSpan();
+
+            for (var i = 0; i < Sorted.Count; i++) {
+                var element = Sorted[i];
+
+                if (inDegree[i] == 0) {
+                    _ = Interlocked.Increment(ref RunningTasks);
+                    Console.WriteLine($"Enqueued: {element.node.GlobalID}");
+                    TaskQueue.Enqueue(element);
+                }
             }
         }
 
@@ -213,17 +240,19 @@ namespace InitialPrefabs.TaskFlow.Threading {
 
                 if (inDegree[i] == 0) {
                     _ = Interlocked.Increment(ref RunningTasks);
-                    // TODO: Queue the tasks
-                    taskQueue.Enqueue(element);
+                    TaskQueue.Enqueue(element);
                 }
             }
 
             while (RunningTasks > 0) {
                 // We dequeued the tasks and tracked them, but we need to somehow wait
-                if (taskQueue.TryDequeue(out var element)) {
+                if (TaskQueue.TryDequeue(out var element)) {
                     // We have to dequeue the task. Figure out how many Workers we need to spawn
                     var workload = element.metadata.Ref.Workload;
                     var task = element.node.Task;
+
+                    // Update the indegree matrix
+                    inDegree[element.node.GlobalID]--;
 
                     switch (workload.Type) {
                         case WorkloadType.Fake:
@@ -238,7 +267,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
                                 var rented = WorkerBuffer.Rent();
                                 rented.worker.Start(action, element.metadata);
                                 Workers.Add(rented.worker);
-                                Handles.Add(rented.handle);
+                                Handles.Add((rented.handle, element.metadata));
                                 break;
                             }
                         case WorkloadType.SingleThreadLoop: {
@@ -251,32 +280,43 @@ namespace InitialPrefabs.TaskFlow.Threading {
                                 break;
                             }
                         case WorkloadType.MultiThreadLoop: {
-                            for (var x = 0; x < workload.ThreadCount; x++) {
-                                // Determine the slice
-                                var startOffset = x * workload.BatchSize;
-                                var diff = workload.Total - startOffset;
-                                var length = diff > workload.BatchSize ? workload.BatchSize : diff;
+                                for (var x = 0; x < workload.ThreadCount; x++) {
+                                    // Determine the slice
+                                    var startOffset = x * workload.BatchSize;
+                                    var diff = workload.Total - startOffset;
+                                    var length = diff > workload.BatchSize ? workload.BatchSize : diff;
 
-                                Action action = () => {
-                                    var metadata = element.metadata;
-                                    for (var i = 0; i < length && !metadata.Ref.Token.IsCancellationRequested; i++) {
-                                        var idx = startOffset + i;
-                                        task.Execute(idx);
-                                    }
-                                };
+                                    Action action = () => {
+                                        var metadata = element.metadata;
+                                        for (var i = 0; i < length && !metadata.Ref.Token.IsCancellationRequested; i++) {
+                                            var idx = startOffset + i;
+                                            task.Execute(idx);
+                                        }
+                                    };
 
-                                // Now create a unit task
+                                    // Now create a unit task
+                                }
+                                break;
                             }
-                            break;
-                        }
                     }
                 }
                 // If we drained the first tasks from the task queue, we need to wait.
-                if (taskQueue.IsEmpty) {
-                    var waitHandles = Workers.AsReadOnlySpan();
-                    TaskWorker.WaitAll(waitHandles);
+                if (TaskQueue.IsEmpty) {
+                    var workers = Workers.AsReadOnlySpan();
+                    TaskWorker.WaitAll(workers);
                     // Now we have to decrement and enqueue more tasks.
                     // TODO: Check if any of the Workers faulted too.
+                    foreach (var e in Handles) {
+                        var metadata = e.metadata.Ref;
+                        if (metadata.State == TaskState.Faulted) {
+                            // TODO: Add a log handler
+                            Console.WriteLine("Faulted");
+                            return;
+                        }
+                    }
+                    RunningTasks = Interlocked.Exchange(ref RunningTasks, RunningTasks - workers.Length);
+
+                    // TODO: Queue the next tasks, maybe store the index
                 }
             }
         }

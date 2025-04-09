@@ -60,6 +60,11 @@ namespace InitialPrefabs.TaskFlow.Collections {
     public static class NoAllocListExtensions {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void Clear<T>(this ref NoAllocList<T> list) where T : unmanaged {
+            list.Count = 0;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void Add<T>(this ref NoAllocList<T> list, T item) where T : unmanaged {
             if (list.Count >= list.Length) {
                 return;

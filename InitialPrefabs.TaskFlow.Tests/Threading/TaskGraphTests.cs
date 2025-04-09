@@ -1,6 +1,7 @@
 ﻿using InitialPrefabs.TaskFlow.Collections;
 using NUnit.Framework;
 using System;
+using System.Collections.Generic;
 
 namespace InitialPrefabs.TaskFlow.Threading.Tests {
 
@@ -18,7 +19,7 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
         public void SetUp() {
             TaskHandleExtensions.Initialize(5);
             var graph = TaskHandleExtensions.Graph;
-            var bitArray = new NoAllocBitArray(graph.Bytes.AsByteSpan());
+            var bitArray = new NoAllocBitArray(graph.Bytes.AsSpan());
             var index = 0;
             foreach (var element in bitArray) {
                 bitArray[index++] = true;
@@ -35,7 +36,7 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
                 Assert.That(graph.Nodes, Has.Count.EqualTo(0),
                         "Tracked Nodes were not resetted");
 
-                var bitArray = new NoAllocBitArray(graph.Bytes.AsByteSpan());
+                var bitArray = new NoAllocBitArray(graph.Bytes.AsSpan());
                 foreach (var element in bitArray) {
                     Assert.That(!element, "Did not reset");
                 }
@@ -65,6 +66,58 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
                 Assert.That(metadata.Workload.Total, Is.EqualTo(128));
                 Assert.That(metadata.Workload.BatchSize, Is.EqualTo(32));
             });
+        }
+
+        [Test]
+        public void EnqueueTasksTest() {
+            var handleA = new S { }.Schedule();
+            var handleB = new S { }.Schedule(handleA);
+            var handleC = new S { }.Schedule(handleA);
+            var handleD = new S { }.Schedule(handleC);
+            var handleE = new S { }.Schedule();
+            var handleF = new S { }.Schedule(handleB);
+
+            // The order should be
+            // A E
+            // B C
+            // F D
+            //
+            // Or
+            // 0 4
+            // 1 2
+            // 5 3
+
+            var order = new[] { 0, 4, 1, 2, 5, 3 };
+            var sorted = TaskHandleExtensions.Graph.Sorted;
+            TaskHandleExtensions.Graph.Sort();
+
+            Assert.That(
+                sorted,
+                Has.Count.EqualTo(order.Length),
+                "Mismatched tracking.");
+
+            for (var i = 0; i < order.Length; i++) {
+                Assert.That(
+                    sorted[i].node.GlobalID,
+                    Is.EqualTo(order[i]),
+                    $"Failed at {i} with value: {order[i]}, mismatched order");
+            }
+
+            var idx = TaskHandleExtensions.Graph.EnqueueTasks(0);
+            Assert.Multiple(() => {
+                Assert.That(
+                    TaskHandleExtensions.Graph.TaskQueue,
+                    Has.Count.EqualTo(2),
+                    "Tasks A and E should be scheduled first!");
+
+                Assert.That(idx, Is.EqualTo(1));
+            });
+            var set = new HashSet<int>() { 0, 4 };
+
+            foreach (var element in
+                TaskHandleExtensions.Graph.TaskQueue) {
+                Assert.That(set, Does.Contain(element.node.GlobalID));
+            }
         }
 
         [Test]
@@ -102,10 +155,7 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
                     $"Failed at {i} with value: {order[i]}, mismatched order");
             }
 
-            TaskHandleExtensions.Graph.EnqueueTasks();
-            Assert.That(
-                TaskHandleExtensions.Graph.TaskQueue,
-                Has.Count.EqualTo(2));
+            TaskHandleExtensions.Graph.Process();
         }
 
         [Test]

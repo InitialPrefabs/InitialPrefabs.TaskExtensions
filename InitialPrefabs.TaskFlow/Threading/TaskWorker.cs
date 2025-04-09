@@ -51,10 +51,11 @@ namespace InitialPrefabs.TaskFlow.Threading {
                     m.State = TaskState.Faulted;
                     m.Token.Cancel();
                 } finally {
+                    Complete();
                     if (m.State != TaskState.Faulted) {
+                        Console.WriteLine("Completed");
                         m.State = TaskState.Completed;
                     }
-                    Complete();
                 }
             }, null);
         }
@@ -82,6 +83,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
         }
 
         public static void WaitAll(ReadOnlySpan<TaskWorker> tasks) {
+            Console.WriteLine("Waiting");
             foreach (var task in tasks) {
                 task.Wait();
             }

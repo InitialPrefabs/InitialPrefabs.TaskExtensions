@@ -51,16 +51,17 @@ namespace InitialPrefabs.TaskFlow.Threading {
             };
         }
 
-        public bool Equals(TaskWorkload other) {
+        public readonly bool Equals(TaskWorkload other) {
             return other.Total == Total && BatchSize == other.BatchSize;
         }
 
-        public override string ToString() {
+        public override readonly string ToString() {
             return Type switch {
                 WorkloadType.Fake => "Fake",
                 WorkloadType.SingleThreadNoLoop => "Single Thread With No Loops",
                 WorkloadType.SingleThreadLoop => $"Single Thread With Loop Count: {Length}",
                 WorkloadType.MultiThreadLoop => $"Multiple Threads: {ThreadCount} with Total: {Total}, BatchSize: {BatchSize}",
+                _ => string.Empty
             };
         }
     }

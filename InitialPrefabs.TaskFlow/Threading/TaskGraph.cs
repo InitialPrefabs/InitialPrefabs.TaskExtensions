@@ -46,16 +46,6 @@ namespace InitialPrefabs.TaskFlow.Threading {
             public fixed sbyte Data[TaskConstants.MaxTasks];
         }
 
-        internal unsafe struct _TaskBuffer {
-            public fixed byte Data[TaskConstants.MaxTasks];
-
-            public readonly Span<byte> AsSpan() {
-                fixed (byte* ptr = Data) {
-                    return new Span<byte>(ptr, TaskConstants.MaxTasks);
-                }
-            }
-        }
-
         internal unsafe struct _Bools {
             internal fixed byte Data[TaskConstants.MaxTasks / 4];
 
@@ -105,12 +95,8 @@ namespace InitialPrefabs.TaskFlow.Threading {
         internal _TaskGroups TaskGroups;
         internal ushort GroupCount;
 
-        // Task Queue section
-        internal ConcurrentQueue<(INode<ushort> node, UnmanagedRef<TaskMetadata> metadata)> TaskQueue;
-        internal int RunningTasks;
-
         internal WorkerBuffer WorkerBuffer;
-        internal DynamicArray<TaskWorker> Workers;
+        internal DynamicArray<TaskWorker> WorkerRefs;
         internal DynamicArray<(WorkerHandle workerHandle, UnmanagedRef<TaskMetadata> metadata)> Handles;
 
         // TODO: Write an allocation strategy
@@ -124,19 +110,16 @@ namespace InitialPrefabs.TaskFlow.Threading {
             }
             Metadata.Clear();
 
-            TaskQueue = new ConcurrentQueue<(INode<ushort> node, UnmanagedRef<TaskMetadata> metadata)>();
             WorkerBuffer = new WorkerBuffer();
-            Workers = new DynamicArray<TaskWorker>(TaskConstants.MaxTasks);
+            WorkerRefs = new DynamicArray<TaskWorker>(TaskConstants.MaxTasks);
             Handles = new DynamicArray<(WorkerHandle, UnmanagedRef<TaskMetadata>)>(TaskConstants.MaxTasks);
         }
 
         public void Reset() {
-            GroupCount = 0;
-            RunningTasks = 0;
-
             foreach (var node in Nodes) {
                 node.Dispose();
             }
+
             // Reset all metadata
             for (var i = 0; i < Metadata.Collection.Length; i++) {
                 ref var collection = ref Metadata.Collection[i];
@@ -149,6 +132,12 @@ namespace InitialPrefabs.TaskFlow.Threading {
 
             Bytes = default;
             Edges = default;
+            AdjacencyMatrix = default;
+            TaskGroups = default;
+            GroupCount = 0;
+
+            WorkerRefs.Clear();
+            Handles.Clear();
         }
 
         public void Track(INode<ushort> trackedTask, TaskWorkload workload) {
@@ -261,6 +250,10 @@ namespace InitialPrefabs.TaskFlow.Threading {
                 batchIndex++;
             }
             GroupCount = batchIndex;
+
+            if (Sorted.Count != taskCount) {
+                throw new InvalidOperationException("Cyclic dependencies occurred, aborting!");
+            }
         }
 
         public void Process() {
@@ -281,26 +274,55 @@ namespace InitialPrefabs.TaskFlow.Threading {
                                 void action() {
                                     task.Execute(-1);
                                 }
-                                var rented = WorkerBuffer.Rent();
-                                rented.worker.Start(action, element.metadata);
-                                Workers.Add(rented.worker);
-                                Handles.Add((rented.handle, element.metadata));
+                                var (handle, worker) = WorkerBuffer.Rent();
+                                worker.Start(action, element.metadata);
+                                WorkerRefs.Add(worker);
+                                Handles.Add((handle, element.metadata));
                                 break;
                             }
-                        case WorkloadType.SingleThreadLoop:
-                            break;
-                        case WorkloadType.MultiThreadLoop:
-                            break;
+                        case WorkloadType.SingleThreadLoop: {
+                                void action() {
+                                    for (var i = 0; i < metadata.Workload.Length; i++) {
+                                        task.Execute(i);
+                                    }
+                                }
+                                var (handle, worker) = WorkerBuffer.Rent();
+                                worker.Start(action, element.metadata);
+                                WorkerRefs.Add(worker);
+                                Handles.Add((handle, element.metadata));
+                                break;
+                            }
+                        case WorkloadType.MultiThreadLoop: {
+                                for (var t = 0; t < metadata.Workload.ThreadCount; t++) {
+                                    var start = t * metadata.Workload.BatchSize;
+                                    var diff = metadata.Workload.Total - start;
+                                    var length = diff > metadata.Workload.BatchSize ?
+                                        metadata.Workload.BatchSize : diff;
+
+                                    void action() {
+                                        for (var m = 0; m < length; m++) {
+                                            var offset = m + start;
+                                            task.Execute(offset);
+                                        }
+                                    }
+
+                                    var (handle, worker) = WorkerBuffer.Rent();
+                                    worker.Start(action, element.metadata);
+                                    WorkerRefs.Add(worker);
+                                    Handles.Add((handle, element.metadata));
+                                }
+                                break;
+                            }
                         default:
                             throw new InvalidOperationException();
                     }
                 }
 
-                var workers = Workers.AsReadOnlySpan();
+                var workers = WorkerRefs.AsReadOnlySpan();
                 TaskWorker.WaitAll(workers);
-                for (var x = 0; x < Workers.Count; x++) {
+                for (var x = 0; x < WorkerRefs.Count; x++) {
                     var handle = Handles[x];
-                    var worker = Workers[x];
+                    var worker = WorkerRefs[x];
 
                     var metadata = handle.metadata.Ref;
                     if (metadata.State == TaskState.Faulted) {
@@ -311,7 +333,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
                     // Return the worker
                     WorkerBuffer.Return((handle.workerHandle, worker));
                 }
-                Workers.Clear();
+                WorkerRefs.Clear();
                 Handles.Clear();
             }
         }

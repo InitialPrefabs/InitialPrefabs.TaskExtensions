@@ -19,7 +19,20 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
         }
 
         private struct T : ITaskFor {
-            public readonly void Execute(int index) { }
+            public int[] A;
+            public int[] B;
+
+            public readonly void Execute(int index) {
+                A[index] = B[index] + 1;
+            }
+        }
+
+        private struct U : ITaskFor {
+            public int[] A;
+            public int[] B;
+            public void Execute(int index) {
+                A[index] = A[index] + B[index];
+            }
         }
 
         [SetUp]
@@ -65,8 +78,6 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
                 Assert.That(graph.Nodes, Has.Count.EqualTo(1));
                 Assert.That(graph.Metadata, Has.Count.EqualTo(1));
                 var metadata = graph.Metadata[0];
-                Console.WriteLine(graph.Metadata.Count);
-                Console.WriteLine(metadata.Workload.ToString());
 
                 Assert.That(metadata.Workload.Type, Is.EqualTo(WorkloadType.MultiThreadLoop));
                 Assert.That(metadata.Workload.ThreadCount, Is.EqualTo(4));
@@ -115,10 +126,6 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
                 var groups = TaskHandleExtensions.Graph.Groups;
                 Assert.That(groups.Length, Is.EqualTo(3),
                     "3 parallel groups should exist.");
-
-                foreach (var e in groups) {
-                    Console.WriteLine(e);
-                }
 
                 Assert.That(groups[0], Is.EqualTo(new TaskSlice {
                     Start = 0,
@@ -189,6 +196,34 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
 
             Assert.That(value.Value, Is.EqualTo(6),
                 "The value should have been incremented.");
+        }
+
+        [Test]
+        public void ParallelForTest() {
+            var a = new int[8];
+            var b = new int[] { 1, 2, 3, 4, 5, 6, 7, 8 };
+            var handleA = new T {
+                A = a,
+                B = b
+            }.ScheduleParallel(a.Length, 4);
+
+            var handleB = new U {
+                A = a,
+                B = b
+            }.ScheduleParallel(a.Length, 4, handleA);
+
+            // 1, 2, 3, 4,  5,  6, 7, 8
+            // 2, 3, 4, 5,  6,  7, 8, 9
+            // 3, 5, 7, 9, 11, 13, 15, 17
+            var c = new int[] { 3, 5, 7, 9, 11, 13, 15, 17 };
+
+            TaskHandleExtensions.Graph.Sort();
+            TaskHandleExtensions.Graph.Process();
+
+            for (var i = 0; i < c.Length; i++) {
+                Assert.That(a[i], Is.EqualTo(c[i]),
+                    $"Failed to parallel add at index: {i}");
+            }
         }
 
         [Test]

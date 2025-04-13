@@ -30,8 +30,16 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
         private struct U : ITaskFor {
             public int[] A;
             public int[] B;
-            public void Execute(int index) {
+            public readonly void Execute(int index) {
                 A[index] = A[index] + B[index];
+            }
+        }
+
+        private struct V : ITaskFor {
+            public int[] A;
+
+            public readonly void Execute(int index) {
+                A[index] = index;
             }
         }
 
@@ -79,7 +87,8 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
                 Assert.That(graph.Metadata, Has.Count.EqualTo(1));
                 var metadata = graph.Metadata[0];
 
-                Assert.That(metadata.Workload.Type, Is.EqualTo(WorkloadType.MultiThreadLoop));
+                Assert.That(metadata.Workload.Type,
+                    Is.EqualTo(WorkloadType.MultiThreadLoop));
                 Assert.That(metadata.Workload.ThreadCount, Is.EqualTo(4));
                 Assert.That(metadata.Workload.Total, Is.EqualTo(128));
                 Assert.That(metadata.Workload.BatchSize, Is.EqualTo(32));
@@ -177,7 +186,8 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
             // 5 3
 
             var order = new[] { 0, 4, 1, 2, 5, 3 };
-            var sorted = TaskHandleExtensions.Graph.Sorted;
+            var sorted =
+                TaskHandleExtensions.Graph.Sorted;
             TaskHandleExtensions.Graph.Sort();
 
             Assert.That(
@@ -207,7 +217,7 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
                 B = b
             }.ScheduleParallel(a.Length, 4);
 
-            var handleB = new U {
+            var _ = new U {
                 A = a,
                 B = b
             }.ScheduleParallel(a.Length, 4, handleA);
@@ -223,6 +233,30 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
             for (var i = 0; i < c.Length; i++) {
                 Assert.That(a[i], Is.EqualTo(c[i]),
                     $"Failed to parallel add at index: {i}");
+            }
+        }
+
+        [Test]
+        public void MultiParadigmTest() {
+            var a = new int[8];
+            var b = new int[8] { 0, 1, 2, 3, 4, 5, 6, 7 };
+
+            // Schedule a loop on a thread
+            var handleA = new V {
+                A = a
+            }.Schedule(8);
+
+            // Schedule 2 loops onto 2 threads
+            var handleB = new U {
+                A = a,
+                B = b
+            }.ScheduleParallel(8, 4, handleA);
+
+            TaskHandleExtensions.Graph.Sort();
+            TaskHandleExtensions.Graph.Process();
+
+            for (var i = 0; i < 8; i++) {
+                Assert.That(a[i], Is.EqualTo(i * 2));
             }
         }
 

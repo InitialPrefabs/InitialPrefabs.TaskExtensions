@@ -6,7 +6,7 @@ using System.Threading;
 namespace InitialPrefabs.TaskFlow.Threading {
 
     public readonly struct WorkerHandle : IEquatable<WorkerHandle> {
-        private readonly byte Id;
+        internal readonly byte Id;
 
         public WorkerHandle(byte id) {
             Id = id;
@@ -53,7 +53,6 @@ namespace InitialPrefabs.TaskFlow.Threading {
                 } finally {
                     Complete();
                     if (m.State != TaskState.Faulted) {
-                        Console.WriteLine("Completed");
                         m.State = TaskState.Completed;
                     }
                 }
@@ -83,7 +82,6 @@ namespace InitialPrefabs.TaskFlow.Threading {
         }
 
         public static void WaitAll(ReadOnlySpan<TaskWorker> tasks) {
-            Console.WriteLine("Waiting");
             foreach (var task in tasks) {
                 task.Wait();
             }

@@ -1,14 +1,21 @@
 ﻿using InitialPrefabs.TaskFlow.Collections;
 using NUnit.Framework;
 using System;
-using System.Collections.Generic;
+using System.Threading;
 
 namespace InitialPrefabs.TaskFlow.Threading.Tests {
 
     public class TaskGraphTests {
 
+        private class RefInt {
+            public int Value;
+        }
+
         private struct S : ITaskFor {
-            public readonly void Execute(int index) { }
+            public RefInt RefInt;
+            public readonly void Execute(int index) {
+                RefInt.Value = Interlocked.Increment(ref RefInt.Value);
+            }
         }
 
         private struct T : ITaskFor {
@@ -69,7 +76,7 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
         }
 
         [Test]
-        public void EnqueueTasksTest() {
+        public void SortTest() {
             var handleA = new S { }.Schedule();
             var handleB = new S { }.Schedule(handleA);
             var handleC = new S { }.Schedule(handleA);
@@ -103,31 +110,54 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
                     $"Failed at {i} with value: {order[i]}, mismatched order");
             }
 
-            var idx = TaskHandleExtensions.Graph.EnqueueTasks(0);
-            Assert.Multiple(() => {
-                Assert.That(
-                    TaskHandleExtensions.Graph.TaskQueue,
-                    Has.Count.EqualTo(2),
-                    "Tasks A and E should be scheduled first!");
 
-                Assert.That(idx, Is.EqualTo(1));
+            Assert.Multiple(static () => {
+                var groups = TaskHandleExtensions.Graph.Groups;
+                Assert.That(groups.Length, Is.EqualTo(3),
+                    "3 parallel groups should exist.");
+
+                foreach (var e in groups) {
+                    Console.WriteLine(e);
+                }
+
+                Assert.That(groups[0], Is.EqualTo(new TaskSlice {
+                    Start = 0,
+                    Count = 2
+                }));
+
+                Assert.That(groups[1], Is.EqualTo(new TaskSlice {
+                    Start = 2,
+                    Count = 2
+                }));
+
+                Assert.That(groups[2], Is.EqualTo(new TaskSlice {
+                    Start = 4,
+                    Count = 2
+                }));
             });
-            var set = new HashSet<int>() { 0, 4 };
-
-            foreach (var element in
-                TaskHandleExtensions.Graph.TaskQueue) {
-                Assert.That(set, Does.Contain(element.node.GlobalID));
-            }
         }
 
         [Test]
         public void ChecksDependency() {
-            var handleA = new S { }.Schedule();
-            var handleB = new S { }.Schedule(handleA);
-            var handleC = new S { }.Schedule(handleA);
-            var handleD = new S { }.Schedule(handleC);
-            var handleE = new S { }.Schedule();
-            var handleF = new S { }.Schedule(handleB);
+            var value = new RefInt();
+            var handleA = new S {
+                RefInt = value,
+            }.Schedule();
+            var handleB = new S {
+                RefInt = value,
+            }.Schedule(handleA);
+            var handleC = new S {
+                RefInt = value,
+            }.Schedule(handleA);
+            var handleD = new S {
+                RefInt = value,
+            }.Schedule(handleC);
+            var handleE = new S {
+                RefInt = value,
+            }.Schedule();
+            var handleF = new S {
+                RefInt = value,
+            }.Schedule(handleB);
 
             // The order should be
             // A E
@@ -156,6 +186,9 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
             }
 
             TaskHandleExtensions.Graph.Process();
+
+            Assert.That(value.Value, Is.EqualTo(6),
+                "The value should have been incremented.");
         }
 
         [Test]

@@ -1,11 +1,23 @@
 ﻿using InitialPrefabs.TaskFlow.Collections;
-using InitialPrefabs.TaskFlow.Utils;
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
-using System.Threading;
 
 namespace InitialPrefabs.TaskFlow.Threading {
+
+    // This size is 4 bytes
+    internal struct TaskSlice : IEquatable<TaskSlice> {
+        public ushort Start;
+        public ushort Count;
+
+        public readonly bool Equals(TaskSlice other) {
+            return other.Start == Start && other.Count == Count;
+        }
+
+        public override readonly string ToString() {
+            return $"Start: {Start}, Count: {Count}";
+        }
+    }
 
     public static class TaskConstants {
         internal const int MaxTasks = 256;
@@ -44,7 +56,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
             }
         }
 
-        internal unsafe struct MaxByteBools {
+        internal unsafe struct _Bools {
             internal fixed byte Data[TaskConstants.MaxTasks / 4];
 
             public readonly Span<byte> AsSpan() {
@@ -64,13 +76,34 @@ namespace InitialPrefabs.TaskFlow.Threading {
             }
         }
 
+        // TODO: Fix the size because it supports up to 256 tasks in parallel, that likely won't happen.
+        internal unsafe struct _TaskGroups {
+            public fixed byte Data[TaskConstants.MaxTasks * 4];
+
+            public readonly Span<TaskSlice> AsSpan() {
+                fixed (byte* ptr = Data) {
+                    return new Span<TaskSlice>(ptr, TaskConstants.MaxTasks);
+                }
+            }
+
+            public readonly ReadOnlySpan<TaskSlice> AsSpan(int count) {
+                fixed (byte* ptr = Data) {
+                    return new ReadOnlySpan<TaskSlice>(ptr, count);
+                }
+            }
+        }
+
+        internal ReadOnlySpan<TaskSlice> Groups => TaskGroups.AsSpan(GroupCount);
+
         // Stores an ordered list of TaskHandles
         internal DynamicArray<INode<ushort>> Nodes;
         internal DynamicArray<(INode<ushort> node, UnmanagedRef<TaskMetadata> metadata)> Sorted;
         internal DynamicArray<TaskMetadata> Metadata; // TODO: Sort the metadata also?
-        internal MaxByteBools Bytes;
+        internal _Bools Bytes;
         internal _Edges Edges;
         internal _AdjacencyMatrix AdjacencyMatrix;
+        internal _TaskGroups TaskGroups;
+        internal ushort GroupCount;
 
         // Task Queue section
         internal ConcurrentQueue<(INode<ushort> node, UnmanagedRef<TaskMetadata> metadata)> TaskQueue;
@@ -79,7 +112,6 @@ namespace InitialPrefabs.TaskFlow.Threading {
         internal WorkerBuffer WorkerBuffer;
         internal DynamicArray<TaskWorker> Workers;
         internal DynamicArray<(WorkerHandle workerHandle, UnmanagedRef<TaskMetadata> metadata)> Handles;
-
 
         // TODO: Write an allocation strategy
         public TaskGraph(int capacity) {
@@ -99,6 +131,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
         }
 
         public void Reset() {
+            GroupCount = 0;
             RunningTasks = 0;
 
             foreach (var node in Nodes) {
@@ -183,22 +216,12 @@ namespace InitialPrefabs.TaskFlow.Threading {
                     if (parentIdx > -1) {
                         adjacencyMatrix[(parentIdx * TaskConstants.MaxTasks) + childIdx] = 1;
                         inDegree[childIdx]++;
-                        unsafe {
-                            Console.WriteLine($"Child: {childIdx}: {inDegree[childIdx]}, {Edges.Data[childIdx]}");
-                        }
                     }
                 }
             }
 
             PrintAdjacencyMatrix(adjacencyMatrix, taskCount);
             var totalTaskCountSq = taskCount * taskCount;
-            var copy = AdjacencyMatrix;
-            var slicedMatrix = copy.AsSpan();
-
-            // Copy the bigger matrix into the smaller matrix
-            for (var i = 0; i < totalTaskCountSq; i++) {
-                slicedMatrix[i] = adjacencyMatrix[i];
-            }
 
             Span<ushort> _queue = stackalloc ushort[TaskConstants.MaxTasks];
             var queue = new NoAllocQueue<ushort>(_queue);
@@ -208,174 +231,88 @@ namespace InitialPrefabs.TaskFlow.Threading {
                 }
             }
 
-            var _edgeCopy = Edges;
-            var copyInDegree = _edgeCopy.AsSpan();
-
+            var taskGroups = TaskGroups.AsSpan();
+            ushort batchIndex = 0;
+            ushort offset = 0;
             while (queue.Count > 0) {
-                var taskIdx = queue.Dequeue();
-                Sorted.Add((Nodes[taskIdx],
-                    new UnmanagedRef<TaskMetadata>(ref Metadata.ElementAt(taskIdx))));
-                for (ushort x = 0; x < taskCount; x++) {
-                    if (slicedMatrix[(taskIdx * TaskConstants.MaxTasks) + x] == 1) {
-                        copyInDegree[x]--;
+                var batchSize = (ushort)queue.Count;
+                taskGroups[batchIndex] = new TaskSlice {
+                    Count = batchSize,
+                    Start = offset
+                };
 
-                        if (copyInDegree[x] == 0) {
-                            _ = queue.TryEnqueue(x);
+                for (var i = 0; i < batchSize; i++) {
+                    var taskIdx = queue.Dequeue();
+                    Sorted.Add((Nodes[taskIdx],
+                        new UnmanagedRef<TaskMetadata>(ref Metadata.ElementAt(taskIdx))));
+
+                    for (ushort x = 0; x < taskCount; x++) {
+                        if (adjacencyMatrix[(taskIdx * TaskConstants.MaxTasks) + x] == 1) {
+                            inDegree[x]--;
+
+                            if (inDegree[x] == 0) {
+                                offset++;
+                                _ = queue.TryEnqueue(x);
+                            }
                         }
                     }
                 }
-            }
 
-            for (var i = 0; i < inDegree.Length; i++) {
-                Console.WriteLine($"{i}: {inDegree[i]}");
+                batchIndex++;
             }
-
-            foreach (var e in Sorted) {
-                Console.WriteLine($"Task ID: {e.node.GlobalID}");
-            }
-
-            if (Sorted.Count != taskCount) {
-                throw new InvalidOperationException("Cyclic dependencies occurred, aborting!");
-            }
-        }
-
-        public int EnqueueTasks(int start) {
-            if (start > 0) {
-                start++;
-            }
-            var inDegree = Edges.AsSpan();
-            var idx = -1;
-            Console.WriteLine($"Starting from: {start}");
-            for (var i = start; i < Sorted.Count; i++) {
-                var element = Sorted[i];
-
-                if (inDegree[element.node.GlobalID] == 0) {
-                    _ = Interlocked.Increment(ref RunningTasks);
-                    Console.WriteLine($"Enqueued: {element.node.GlobalID}");
-                    TaskQueue.Enqueue(element);
-                    idx = i;
-                }
-            }
-            return idx;
+            GroupCount = batchIndex;
         }
 
         public void Process() {
-            var inDegree = Edges.AsSpan();
+            var taskGroups = TaskGroups.AsSpan(GroupCount);
+            for (var i = 0; i < GroupCount; i++) {
+                var slice = taskGroups[i];
 
-            // Main thread implementation
-            var idx = EnqueueTasks(0);
-
-            var taskCount = Sorted.Count;
-            Span<ushort> _list = stackalloc ushort[taskCount];
-            var list = new NoAllocList<ushort>(_list);
-
-            while (RunningTasks > 0) {
-                // We dequeued the tasks and tracked them, but we need to somehow wait
-                if (TaskQueue.TryDequeue(out var element)) {
-
-
-                    // Find the index in the sorted.
-                    var taskIdx =
-                        Sorted.Find(s => s.node == element.node);
-
-                    list.Add((ushort)taskIdx);
-
-                    Console.WriteLine(element.metadata.Ref.State);
-                    // We have to dequeue the task. Figure out how many Workers we need to spawn
-                    var workload = element.metadata.Ref.Workload;
+                for (var x = 0; x < slice.Count; x++) {
+                    var offset = x + slice.Start;
+                    var element = Sorted[offset];
+                    var metadata = element.metadata.Ref;
                     var task = element.node.Task;
 
-                    switch (workload.Type) {
+                    switch (metadata.Workload.Type) {
                         case WorkloadType.Fake:
                             break;
                         case WorkloadType.SingleThreadNoLoop: {
-                                // Create an action
                                 void action() {
                                     task.Execute(-1);
                                 }
-
-                                // Launch a worker, and we have to store the worker handle and the metadata.
                                 var rented = WorkerBuffer.Rent();
                                 rented.worker.Start(action, element.metadata);
                                 Workers.Add(rented.worker);
                                 Handles.Add((rented.handle, element.metadata));
                                 break;
                             }
-                        case WorkloadType.SingleThreadLoop: {
-                                void action() {
-                                    var metadata = element.metadata;
-                                    for (var i = 0; i < workload.Length && !metadata.Ref.Token.IsCancellationRequested; i++) {
-                                        task.Execute(i);
-                                    }
-                                }
-                                break;
-                            }
-                        case WorkloadType.MultiThreadLoop: {
-                                for (var x = 0; x < workload.ThreadCount; x++) {
-                                    // Determine the slice
-                                    var startOffset = x * workload.BatchSize;
-                                    var diff = workload.Total - startOffset;
-                                    var length = diff > workload.BatchSize ? workload.BatchSize : diff;
-
-                                    void action() {
-                                        var metadata = element.metadata;
-                                        for (var i = 0; i < length && !metadata.Ref.Token.IsCancellationRequested; i++) {
-                                            var idx = startOffset + i;
-                                            task.Execute(idx);
-                                        }
-                                    }
-
-                                    // Now create a unit task
-                                }
-                                break;
-                            }
+                        case WorkloadType.SingleThreadLoop:
+                            break;
+                        case WorkloadType.MultiThreadLoop:
+                            break;
+                        default:
+                            throw new InvalidOperationException();
                     }
                 }
 
-                // If we drained the first tasks from the task queue, we need to wait.
-                if (TaskQueue.IsEmpty) {
-                    var workers = Workers.AsReadOnlySpan();
+                var workers = Workers.AsReadOnlySpan();
+                TaskWorker.WaitAll(workers);
+                for (var x = 0; x < Workers.Count; x++) {
+                    var handle = Handles[x];
+                    var worker = Workers[x];
 
-                    TaskWorker.WaitAll(workers);
-                    // Now we have to decrement and enqueue more tasks.
-                    for (var i = 0; i < Handles.Count; i++) {
-                        var handle = Handles[i];
-                        var worker = Workers[i];
-
-                        var metadata = handle.metadata.Ref;
-                        if (metadata.State == TaskState.Faulted) {
-                            // TODO: Add a log handler
-                            return;
-                        }
-
-                        WorkerBuffer.Return((handle.workerHandle, worker));
+                    var metadata = handle.metadata.Ref;
+                    if (metadata.State == TaskState.Faulted) {
+                        // TODO: Add a log handler
+                        return;
                     }
 
-                    RunningTasks = Interlocked.Exchange(
-                        ref RunningTasks, RunningTasks - workers.Length);
-
-                    // Clear the workers
-                    Workers.Clear();
-
-                    foreach (var taskIdx in list) {
-                        var slicedMatrix = AdjacencyMatrix.AsSpan();
-                        for (ushort x = 0; x < taskCount; x++) {
-                            if (slicedMatrix[(taskIdx * TaskConstants.MaxTasks) + x] == 1) {
-                                Console.WriteLine("Dec");
-                                inDegree[x]--;
-                            }
-
-                            Console.WriteLine($"{x}: {inDegree[x]}");
-                        }
-
-                        PrintAdjacencyMatrix(slicedMatrix, taskCount);
-                    }
-
-                    list.Clear();
-
-                    // TODO: Queue the next tasks, maybe store the index
-                    idx = EnqueueTasks(idx);
+                    // Return the worker
+                    WorkerBuffer.Return((handle.workerHandle, worker));
                 }
+                Workers.Clear();
+                Handles.Clear();
             }
         }
 

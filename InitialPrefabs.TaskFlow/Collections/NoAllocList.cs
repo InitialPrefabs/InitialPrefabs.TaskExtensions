@@ -94,7 +94,7 @@ namespace InitialPrefabs.TaskFlow.Collections {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int IndexOf<T>(this in NoAllocList<T> list, T item) where T : unmanaged, IEquatable<T> {
-            for (var i = 0; i < list.Length; i++) {
+            for (var i = 0; i < list.Count; i++) {
                 var element = list[i];
                 if (element.Equals(item)) {
                     return i;

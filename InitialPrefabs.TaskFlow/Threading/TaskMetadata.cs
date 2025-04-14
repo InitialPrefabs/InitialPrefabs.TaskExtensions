@@ -14,7 +14,8 @@ namespace InitialPrefabs.TaskFlow.Threading {
             return new TaskMetadata {
                 Token = new AtomicCancellationToken(),
                 State = TaskState.NotStarted,
-                Workload = default
+                Workload = default,
+                ExceptionReferences = default
             };
         }
 
@@ -30,6 +31,8 @@ namespace InitialPrefabs.TaskFlow.Threading {
             metadata.Workload = new TaskWorkload();
             metadata.Token.Reset();
             metadata.ExceptionReferences.Clear();
+
+            Console.WriteLine($"Restted: {metadata.State}");
         }
     }
 }

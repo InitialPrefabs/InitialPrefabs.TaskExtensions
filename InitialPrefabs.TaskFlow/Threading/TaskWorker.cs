@@ -35,6 +35,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
             ref var m = ref metadata.Ref;
 
             if (m.State != TaskState.NotStarted) {
+                Console.WriteLine($"Attempted to start with state: {m.State}");
                 throw new InvalidOperationException(
                     "Cannot reuse the same RewindableUnitTask because the " +
                     "associated metadata indicates a thread is inflight.");

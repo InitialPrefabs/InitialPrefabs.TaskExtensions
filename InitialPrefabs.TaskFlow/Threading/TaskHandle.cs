@@ -71,13 +71,16 @@ namespace InitialPrefabs.TaskFlow.Threading {
 
         // TODO: Change this to byte if I am only supporting up to 256 tasks?
         private static ushort UniqueID;
+
+        // TODO: Move this to a public API or a TaskGraphManager
         internal static TaskGraph Graph;
 
-        internal static void Initialize(int capacity) {
+        public static void Initialize(int capacity) {
             Reset();
             Graph = new TaskGraph(capacity);
         }
 
+        // TODO: Rename this or move this to its own unique static class
         public static void Reset() {
             UniqueID = 0;
         }

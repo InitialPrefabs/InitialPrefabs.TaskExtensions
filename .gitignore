@@ -40,3 +40,4 @@ TestResult.xml
 CoverageReport
 coverage.info
 coverage.json
+*.gz

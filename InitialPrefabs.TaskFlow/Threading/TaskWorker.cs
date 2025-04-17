@@ -35,7 +35,6 @@ namespace InitialPrefabs.TaskFlow.Threading {
             ref var m = ref metadata.Ref;
 
             if (m.State != TaskState.NotStarted) {
-                Console.WriteLine($"Attempted to start with state: {m.State}");
                 throw new InvalidOperationException(
                     "Cannot reuse the same RewindableUnitTask because the " +
                     "associated metadata indicates a thread is inflight.");
@@ -59,6 +58,33 @@ namespace InitialPrefabs.TaskFlow.Threading {
                 }
             }, null);
         }
+
+        public void Start(Action action, UnmanagedRef<TaskMetadata> metadata, int index) {
+            ref var m = ref metadata.Ref;
+
+            if (m.State != TaskState.NotStarted && m.Workload.Type != WorkloadType.MultiThreadLoop) {
+                throw new InvalidOperationException(
+                    "Cannot reuse the same RewindableUnitTask because the " +
+                    "associated metadata indicates a thread is inflight.");
+            }
+
+            // When we start a new Unit Task, we have to go through the try catch finally block
+            // to safely execute each thread
+            _ = ThreadPool.UnsafeQueueUserWorkItem(_ => {
+                ref var m = ref metadata.Ref;
+                try {
+                    action.Invoke();
+                } catch (Exception err) {
+                    LogUtils.Emit(err);
+                    m.State = TaskState.Faulted;
+                    m.Token.Cancel();
+                } finally {
+                    Complete();
+                    _ = Interlocked.Exchange(ref m.CompletionFlags, 1 << index);
+                }
+            }, null);
+        }
+
 
         public void Wait() {
             _ = WaitHandle.WaitOne();

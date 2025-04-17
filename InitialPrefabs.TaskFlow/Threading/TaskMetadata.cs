@@ -9,13 +9,15 @@ namespace InitialPrefabs.TaskFlow.Threading {
         public TaskWorkload Workload;
         public AtomicCancellationToken Token;
         public FixedUInt16Array32 ExceptionReferences;
+        public int CompletionFlags;
 
         public static TaskMetadata Default() {
             return new TaskMetadata {
                 Token = new AtomicCancellationToken(),
                 State = TaskState.NotStarted,
                 Workload = default,
-                ExceptionReferences = default
+                ExceptionReferences = default,
+                CompletionFlags = default
             };
         }
 

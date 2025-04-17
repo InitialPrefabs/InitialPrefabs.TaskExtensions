@@ -314,7 +314,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
                                     // TODO: Because we share the same state for all threads with the same metadata, and we create
                                     // another thread that does not start until later, the previous thread will set the Metadata to Completed.
                                     // This causes a queued thread for the same task to be dead.
-                                    worker.Start(action, element.metadata);
+                                    worker.Start(action, element.metadata, t);
                                     WorkerRefs.Add(worker);
                                     Handles.Add((handle, element.metadata));
                                 }

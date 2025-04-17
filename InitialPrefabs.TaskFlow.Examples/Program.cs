@@ -1,5 +1,4 @@
 ﻿using InitialPrefabs.TaskFlow.Threading;
-using System;
 
 namespace InitialPrefabs.TaskFlow.Examples {
 
@@ -29,7 +28,6 @@ namespace InitialPrefabs.TaskFlow.Examples {
                 TaskHandleExtensions.Graph.Reset();
                 TaskHandleExtensions.Reset();
 
-                Console.WriteLine($"Frame: {frame}");
                 var handleA = new ResetTask {
                     A = a
                 }.Schedule(100);
@@ -40,10 +38,6 @@ namespace InitialPrefabs.TaskFlow.Examples {
 
                 TaskHandleExtensions.Graph.Sort();
                 TaskHandleExtensions.Graph.Process();
-
-                foreach (var e in a) {
-                    Console.WriteLine(e);
-                }
                 frame++;
             }
         }

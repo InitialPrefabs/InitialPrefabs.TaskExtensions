@@ -85,10 +85,12 @@ namespace InitialPrefabs.TaskFlow.Threading {
             where T0 : struct, ITaskFor
             where T1 : struct, ITaskFor {
 
-        var handleIdx = Graph.Nodes.IndexOf(handle, new INodeComparer<ushort>());
+        var data = TaskGraphManager.Get(graphHandle);
+
+        var handleIdx = data.graph.Nodes.IndexOf(handle, new INodeComparer<ushort>());
             if (handleIdx > -1) {
                 handle.Parents.Add(dependsOn.GlobalID);
-                Graph.Nodes[handleIdx] = handle;
+                data.graph.Nodes[handleIdx] = handle;
             } else {
                 throw new InvalidOperationException($"TaskHandle {handle.GetType()} with " +
                     $"ID: {handle.GlobalID}, cannot track TaskHandle, {dependsOn.GetType()} " +
@@ -120,6 +122,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
             var taskHandle = new TaskHandle<T0>(handle) {
                 Parents = dependencies
             };
+
             var pair = TaskGraphManager.Get(graphHandle);
             pair.graph.Track(taskHandle, TaskWorkload.SingleUnit());
             return taskHandle;

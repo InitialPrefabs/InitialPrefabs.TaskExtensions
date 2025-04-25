@@ -27,11 +27,14 @@ namespace InitialPrefabs.TaskFlow.Threading {
         // TODO: Add the dependencies, the dependencies need to store the handles.
         internal FixedUInt16Array32 Parents;
 
-        public TaskHandle(LocalHandle<T0> handle) {
-            LocalHandle = handle;
+        public TaskHandle(LocalHandle<T0> local, GraphHandle graphHandle) {
+            (var graph, var uniqueId) = TaskGraphManager.Get(graphHandle);
+            LocalHandle = local;
             Parents = new FixedUInt16Array32();
-            GlobalHandle = TaskHandleExtensions.GetUniqueID();
+            GlobalHandle = uniqueId.Ref++;
         }
+
+        public TaskHandle(LocalHandle<T0> handle) : this(handle, default) { }
 
         public readonly ushort LocalID => LocalHandle;
 
@@ -67,33 +70,22 @@ namespace InitialPrefabs.TaskFlow.Threading {
     }
 
     public static class TaskHandleExtensions {
+        [Obsolete("Use the TaskGraphManager instead.", true)]
         internal const int Capacity = 10;
 
+        [Obsolete("Use the TaskGraphManager instead.", true)]
         // TODO: Change this to byte if I am only supporting up to 256 tasks?
         private static ushort UniqueID;
 
+        [Obsolete("Use the TaskGraphManager instead.", true)]
         // TODO: Move this to a public API or a TaskGraphManager
         internal static TaskGraph Graph;
 
-        public static void Initialize(int capacity) {
-            Reset();
-            Graph = new TaskGraph(capacity);
-        }
-
-        // TODO: Rename this or move this to its own unique static class
-        public static void Reset() {
-            UniqueID = 0;
-        }
-
-        public static ushort GetUniqueID() {
-            return UniqueID++;
-        }
-
-        public static void DependsOn<T0, T1>(this ref TaskHandle<T0> handle, TaskHandle<T1> dependsOn)
+        public static void DependsOn<T0, T1>(this ref TaskHandle<T0> handle, TaskHandle<T1> dependsOn, GraphHandle graphHandle = default)
             where T0 : struct, ITaskFor
             where T1 : struct, ITaskFor {
 
-            var handleIdx = Graph.Nodes.IndexOf(handle, new INodeComparer<ushort>());
+        var handleIdx = Graph.Nodes.IndexOf(handle, new INodeComparer<ushort>());
             if (handleIdx > -1) {
                 handle.Parents.Add(dependsOn.GlobalID);
                 Graph.Nodes[handleIdx] = handle;
@@ -117,7 +109,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
             return task.Schedule(dependencies);
         }
 
-        public static TaskHandle<T0> Schedule<T0>(this T0 task, Span<ushort> dependsOn)
+        public static TaskHandle<T0> Schedule<T0>(this T0 task, Span<ushort> dependsOn, GraphHandle graphHandle = default)
             where T0 : struct, ITaskFor {
             var handle = TaskUnitPool<T0>.Rent(task);
             var dependencies = new FixedUInt16Array32();
@@ -128,7 +120,8 @@ namespace InitialPrefabs.TaskFlow.Threading {
             var taskHandle = new TaskHandle<T0>(handle) {
                 Parents = dependencies
             };
-            Graph.Track(taskHandle, TaskWorkload.SingleUnit());
+            var pair = TaskGraphManager.Get(graphHandle);
+            pair.graph.Track(taskHandle, TaskWorkload.SingleUnit());
             return taskHandle;
         }
 

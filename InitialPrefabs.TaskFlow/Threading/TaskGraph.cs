@@ -4,20 +4,6 @@ using System.Diagnostics;
 
 namespace InitialPrefabs.TaskFlow.Threading {
 
-    // This size is 4 bytes
-    internal struct TaskSlice : IEquatable<TaskSlice> {
-        public ushort Start;
-        public ushort Count;
-
-        public readonly bool Equals(TaskSlice other) {
-            return other.Start == Start && other.Count == Count;
-        }
-
-        public override readonly string ToString() {
-            return $"Start: {Start}, Count: {Count}";
-        }
-    }
-
     public static class TaskConstants {
         internal const int MaxTasks = 256;
     }
@@ -69,20 +55,20 @@ namespace InitialPrefabs.TaskFlow.Threading {
         internal unsafe struct _TaskGroups {
             public fixed byte Data[TaskConstants.MaxTasks * 4];
 
-            public readonly Span<TaskSlice> AsSpan() {
+            public readonly Span<Slice> AsSpan() {
                 fixed (byte* ptr = Data) {
-                    return new Span<TaskSlice>(ptr, TaskConstants.MaxTasks);
+                    return new Span<Slice>(ptr, TaskConstants.MaxTasks);
                 }
             }
 
-            public readonly ReadOnlySpan<TaskSlice> AsSpan(int count) {
+            public readonly ReadOnlySpan<Slice> AsSpan(int count) {
                 fixed (byte* ptr = Data) {
-                    return new ReadOnlySpan<TaskSlice>(ptr, count);
+                    return new ReadOnlySpan<Slice>(ptr, count);
                 }
             }
         }
 
-        internal ReadOnlySpan<TaskSlice> Groups => TaskGroups.AsSpan(GroupCount);
+        internal ReadOnlySpan<Slice> Groups => TaskGroups.AsSpan(GroupCount);
 
         // Stores an ordered list of TaskHandles
         internal DynamicArray<INode<ushort>> Nodes;
@@ -227,7 +213,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
             ushort offset = 0;
             while (queue.Count > 0) {
                 var batchSize = (ushort)queue.Count;
-                taskGroups[batchIndex] = new TaskSlice {
+                taskGroups[batchIndex] = new Slice {
                     Count = batchSize,
                     Start = offset
                 };

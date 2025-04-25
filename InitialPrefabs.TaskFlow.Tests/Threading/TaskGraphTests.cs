@@ -136,17 +136,17 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
                 Assert.That(groups.Length, Is.EqualTo(3),
                     "3 parallel groups should exist.");
 
-                Assert.That(groups[0], Is.EqualTo(new TaskSlice {
+                Assert.That(groups[0], Is.EqualTo(new Slice {
                     Start = 0,
                     Count = 2
                 }));
 
-                Assert.That(groups[1], Is.EqualTo(new TaskSlice {
+                Assert.That(groups[1], Is.EqualTo(new Slice {
                     Start = 2,
                     Count = 2
                 }));
 
-                Assert.That(groups[2], Is.EqualTo(new TaskSlice {
+                Assert.That(groups[2], Is.EqualTo(new Slice {
                     Start = 4,
                     Count = 2
                 }));

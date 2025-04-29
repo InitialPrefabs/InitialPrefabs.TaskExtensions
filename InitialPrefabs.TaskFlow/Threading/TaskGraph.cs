@@ -259,7 +259,6 @@ namespace InitialPrefabs.TaskFlow.Threading {
                         case WorkloadType.Fake:
                             break;
                         case WorkloadType.SingleThreadNoLoop: {
-                                // TODO: Store actions and queue them up all at once
                                 void action() {
                                     task.Execute(-1);
                                 }
@@ -296,7 +295,6 @@ namespace InitialPrefabs.TaskFlow.Threading {
                                     }
 
                                     var (handle, worker) = WorkerBuffer.Rent();
-                                    Console.WriteLine($"index: {t}, Rented: {handle.Id}, {element.metadata.Ref.State}");
                                     // TODO: Because we share the same state for all threads with the same metadata, and we create
                                     // another thread that does not start until later, the previous thread will set the Metadata to Completed.
                                     // This causes a queued thread for the same task to be dead.

@@ -5,6 +5,48 @@ using System.Threading;
 
 namespace InitialPrefabs.TaskFlow.Threading.Tests {
 
+    public class TaskGraphManagerTests {
+        [SetUp]
+        public void SetUp() {
+            TaskGraphManager.Initialize(5);
+            Console.WriteLine($"Count:: {TaskGraphManager.TaskGraphs.Count}");
+        }
+
+        [Test]
+        public void CreateAndRemoveGraph() {
+            Console.WriteLine($"Count:: {TaskGraphManager.TaskGraphs.Count}");
+            var graphHandle = TaskGraphManager.CreateGraph();
+            Console.WriteLine($"Count:: {TaskGraphManager.TaskGraphs.Count}");
+            Assert.That(graphHandle.Ref.Index, Is.EqualTo(1),
+                   "There should be 2 graphs");
+
+            Assert.Multiple(static () => {
+                Assert.That(TaskGraphManager.TaskGraphs, Has.Count.EqualTo(2));
+                Assert.That(TaskGraphManager.TaskHandleMetadata, Has.Count.EqualTo(2));
+                Assert.That(TaskGraphManager.Handles, Has.Count.EqualTo(2));
+            });
+
+            TaskGraphManager.RemoveGraph(new GraphHandle(0));
+
+            Assert.Multiple(() => {
+                Assert.That(TaskGraphManager.TaskGraphs, Has.Count.EqualTo(1));
+                Assert.That(TaskGraphManager.TaskHandleMetadata, Has.Count.EqualTo(1));
+                Assert.That(TaskGraphManager.Handles, Has.Count.EqualTo(1));
+
+                Assert.That(graphHandle.Ref.Index, Is.EqualTo(0), "The graph's local index should be adjusted.");
+            });
+        }
+
+        [TearDown]
+        public void TearDown() {
+            TaskGraphManager.Shutdown();
+            var exception = Assert.Throws<IndexOutOfRangeException>(static () => {
+                _ = TaskGraphManager.Get();
+            });
+            Assert.That(exception, Is.Not.Null);
+        }
+    }
+
     public class TaskGraphTests {
 
         private class RefInt {
@@ -43,10 +85,13 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
             }
         }
 
+        private TaskGraph graph;
+
         [SetUp]
         public void SetUp() {
-            TaskHandleExtensions.Initialize(5);
-            var graph = TaskHandleExtensions.Graph;
+            TaskGraphManager.Initialize(5);
+            (var graph, var _) = TaskGraphManager.Get(default);
+            this.graph = graph;
             var bitArray = new NoAllocBitArray(graph.Bytes.AsSpan());
             var index = 0;
             foreach (var element in bitArray) {
@@ -71,9 +116,13 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
             });
         }
 
+        [TearDown]
+        public void TearDown() {
+            TaskGraphManager.Shutdown();
+        }
+
         [Test]
         public void TrackingTaskHandle() {
-            var graph = TaskHandleExtensions.Graph;
             graph.Reset();
             Assert.Multiple(() => {
                 Assert.That(graph.Nodes, Has.Count.EqualTo(0));
@@ -115,8 +164,8 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
             // 5 3
 
             var order = new[] { 0, 4, 1, 2, 5, 3 };
-            var sorted = TaskHandleExtensions.Graph.Sorted;
-            TaskHandleExtensions.Graph.Sort();
+            var sorted = graph.Sorted;
+            graph.Sort();
 
             Assert.That(
                 sorted,
@@ -131,8 +180,8 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
             }
 
 
-            Assert.Multiple(static () => {
-                var groups = TaskHandleExtensions.Graph.Groups;
+            Assert.Multiple(() => {
+                var groups = graph.Groups;
                 Assert.That(groups.Length, Is.EqualTo(3),
                     "3 parallel groups should exist.");
 
@@ -186,9 +235,8 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
             // 5 3
 
             var order = new[] { 0, 4, 1, 2, 5, 3 };
-            var sorted =
-                TaskHandleExtensions.Graph.Sorted;
-            TaskHandleExtensions.Graph.Sort();
+            var sorted = graph.Sorted;
+            graph.Sort();
 
             Assert.That(
                 sorted,
@@ -202,7 +250,7 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
                     $"Failed at {i} with value: {order[i]}, mismatched order");
             }
 
-            TaskHandleExtensions.Graph.Process();
+            graph.Process();
 
             Assert.That(value.Value, Is.EqualTo(6),
                 "The value should have been incremented.");
@@ -227,8 +275,8 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
             // 3, 5, 7, 9, 11, 13, 15, 17
             var c = new int[] { 3, 5, 7, 9, 11, 13, 15, 17 };
 
-            TaskHandleExtensions.Graph.Sort();
-            TaskHandleExtensions.Graph.Process();
+            graph.Sort();
+            graph.Process();
 
             for (var i = 0; i < c.Length; i++) {
                 Assert.That(a[i], Is.EqualTo(c[i]),
@@ -252,8 +300,8 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
                 B = b
             }.ScheduleParallel(8, 4, handleA);
 
-            TaskHandleExtensions.Graph.Sort();
-            TaskHandleExtensions.Graph.Process();
+            graph.Sort();
+            graph.Process();
 
             for (var i = 0; i < 8; i++) {
                 Assert.That(a[i], Is.EqualTo(i * 2));
@@ -263,13 +311,13 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
         [Test]
         public void MetadataTracking() {
             var rand = new Random();
-            TaskHandleExtensions.Graph.Reset();
+            graph.Reset();
             Span<TaskWorkload> a = stackalloc TaskWorkload[5];
             for (var i = 0; i < 5; i++) {
                 var cond = rand.NextSingle() >= 0.5f;
                 _ = cond ? new S { }.ScheduleParallel(16, 32) : new S { }.Schedule();
 
-                var metadata = TaskHandleExtensions.Graph.Metadata[i];
+                var metadata = graph.Metadata[i];
 
                 Assert.Multiple(() => {
                     Assert.That(metadata.State, Is.EqualTo(TaskState.NotStarted),
@@ -278,7 +326,7 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
                         new TaskWorkload { BatchSize = 32, Total = 16 } :
                         new TaskWorkload { BatchSize = 0, Total = 1 };
                     Assert.That(
-                        TaskHandleExtensions.Graph.Metadata,
+                        graph.Metadata,
                         Has.Count.EqualTo(i + 1),
                         $"Metadata not incremented, failed at {i}");
                 });
@@ -287,7 +335,7 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
             _ = new S { }.Schedule();
 
             Assert.That(
-                TaskHandleExtensions.Graph.Metadata,
+                graph.Metadata,
                 Has.Count.EqualTo(6), $"New Metadata has not been reserved");
         }
 
@@ -298,8 +346,8 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
             var handleC = new S { }.Schedule(handleB);
             handleA.DependsOn(handleC);
 
-            var exception = Assert.Throws<InvalidOperationException>(static () => {
-                TaskHandleExtensions.Graph.Sort();
+            var exception = Assert.Throws<InvalidOperationException>(() => {
+                graph.Sort();
             });
 
             Assert.That(exception, Is.Not.Null, "Exception should be thrown");

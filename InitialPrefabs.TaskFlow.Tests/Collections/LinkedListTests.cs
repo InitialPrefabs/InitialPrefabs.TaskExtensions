@@ -20,7 +20,7 @@ namespace InitialPrefabs.TaskFlow.Collections.Tests {
             Assert.Multiple(() => {
                 Assert.That(linkedList.Nodes[0], Is.Not.EqualTo(default));
                 Assert.That(first, Is.EqualTo(new LinkedList<int>.Node<int> {
-                    Next = 4,
+                    Next = -1,
                     Previous = -1,
                     Value = expected
                 }));
@@ -52,6 +52,39 @@ namespace InitialPrefabs.TaskFlow.Collections.Tests {
                 Assert.That(linkedList.Tail, Is.EqualTo(4),
                     "The tail should have been updated.");
             });
+        }
+
+        [Test]
+        public void RemoveInMiddleTest() {
+            linkedList.Append(1);
+            linkedList.Append(2);
+            linkedList.Append(3);
+
+            var i = 0;
+            foreach (var node in linkedList) {
+                Assert.Multiple(() => {
+                    Assert.That(node.Value, Is.EqualTo(i + 1));
+                    switch (i) {
+                        case 0:
+                            Assert.That(node.Previous, Is.EqualTo(-1));
+                            Assert.That(node.Next, Is.EqualTo(4));
+                            break;
+                        case 1:
+                            Assert.That(node.Previous, Is.EqualTo(0));
+                            Assert.That(node.Next, Is.EqualTo(3));
+                            break;
+                        case 2:
+                            Assert.That(node.Previous, Is.EqualTo(4));
+                            Assert.That(node.Next, Is.EqualTo(-1));
+                            break;
+                        default:
+                            break;
+                    }
+                });
+                i++;
+            }
+
+            // TODO: Remove the center and check
         }
     }
 }

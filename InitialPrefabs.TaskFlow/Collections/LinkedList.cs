@@ -7,12 +7,14 @@ namespace InitialPrefabs.TaskFlow.Collections {
     public class LinkedList<T0> : IEnumerable<LinkedList<T0>.Node<T0>> where T0 : unmanaged, IEquatable<T0> {
 
         public struct Node<T1> : IEquatable<Node<T1>> where T1 : unmanaged, IEquatable<T1> {
-            internal short Previous;
-            internal short Next;
+            internal short PreviousIdx;
+            internal short NextIdx;
             public T1 Value;
 
             public readonly bool Equals(Node<T1> other) {
-                return other.Previous == Previous && other.Next == Next && other.Value.Equals(Value);
+                return other.PreviousIdx == PreviousIdx &&
+                    other.NextIdx == NextIdx &&
+                    other.Value.Equals(Value);
             }
         }
 
@@ -43,8 +45,11 @@ namespace InitialPrefabs.TaskFlow.Collections {
 
         public int Count => UseList.Count;
 
-        internal short Head;
-        internal short Tail;
+        public ref Node<T0> Head => ref Nodes[UseList[0]];
+        public ref Node<T0> Tail => ref Nodes[UseList[UseList.Count - 1]];
+
+        internal short HeadIndex;
+        internal short TailIndex;
 
         public LinkedList(int capacity) {
             Nodes = new Node<T0>[capacity];
@@ -55,8 +60,8 @@ namespace InitialPrefabs.TaskFlow.Collections {
                 FreeList.Add(i);
             }
 
-            Head = -1;
-            Tail = -1;
+            HeadIndex = -1;
+            TailIndex = -1;
         }
 
         public LinkedList(int capacity, T0 value) : this(capacity) {
@@ -70,13 +75,13 @@ namespace InitialPrefabs.TaskFlow.Collections {
             UseList.Add(freeIndex);
 
             Nodes[freeIndex] = new Node<T0> {
-                Previous = -1,
-                Next = -1,
+                PreviousIdx = -1,
+                NextIdx = -1,
                 Value = item,
             };
 
-            Head = freeIndex;
-            Tail = freeIndex;
+            HeadIndex = freeIndex;
+            TailIndex = freeIndex;
         }
 
         public void Append(T0 item) {
@@ -90,35 +95,44 @@ namespace InitialPrefabs.TaskFlow.Collections {
                 FreeList.RemoveAtSwapback(0);
                 UseList.Add(nextFree);
                 var node = new Node<T0> {
-                    Next = -1,
+                    NextIdx = -1,
                     Value = item,
-                    Previous = last
+                    PreviousIdx = last
                 };
-                lastNode.Next = nextFree;
+                lastNode.NextIdx = nextFree;
                 Nodes[nextFree] = node;
-                Tail = nextFree;
+                TailIndex = nextFree;
             }
         }
 
         public void Remove(T0 value) {
-            foreach (var element in UseList) {
-                var nodeToRemove = Nodes[element];
+            for (var i = UseList.Count - 1; i >= 0; i--) {
+                var nodeToRemove = Nodes[UseList[i]];
                 if (nodeToRemove.Value.Equals(value)) {
                     // We found the element, so we need to remove it and link up the neighboring nodes together
                     // If we have a previous node, then we have to link it to the next node.
-                    if (nodeToRemove.Previous != -1) {
+                    if (nodeToRemove.PreviousIdx != -1) {
                         // Get the previous node
-                        ref var prevNode = ref Nodes[nodeToRemove.Previous];
-                        prevNode.Next = nodeToRemove.Next;
+                        ref var prevNode = ref Nodes[nodeToRemove.PreviousIdx];
+                        prevNode.NextIdx = nodeToRemove.NextIdx;
+                    } else {
+                        // We know that we are removing the head, so the next value should be the head
+                        HeadIndex = nodeToRemove.NextIdx;
+                        ref var newHead = ref Nodes[HeadIndex];
+                        newHead.PreviousIdx = -1;
                     }
 
                     // If we have a next node, then we have to link it to the current node's previous.
-                    if (nodeToRemove.Next != -1) {
-                        ref var nextNode = ref Nodes[nodeToRemove.Next];
-                        nextNode.Previous = nodeToRemove.Previous;
+                    if (nodeToRemove.NextIdx != -1) {
+                        ref var nextNode = ref Nodes[nodeToRemove.NextIdx];
+                        nextNode.PreviousIdx = nodeToRemove.PreviousIdx;
+                    } else {
+                        TailIndex = nodeToRemove.PreviousIdx;
+                        ref var newTail = ref Nodes[nodeToRemove.PreviousIdx];
+                        newTail.NextIdx = -1;
                     }
-
                     // TODO: Update the head and tail when we remove nodes.
+                    UseList.RemoveAt(i);
                     break;
                 }
             }

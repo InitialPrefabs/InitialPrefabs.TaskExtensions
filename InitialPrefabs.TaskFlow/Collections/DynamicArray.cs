@@ -88,10 +88,10 @@ namespace InitialPrefabs.TaskFlow.Collections {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void RemoveAt(int index) {
-            count--;
             for (var i = index; i < Count; i++) {
-                Collection[i] = Collection[i + 1];
+                Collection[i] = Collection[MathUtils.Clamp(i + 1, Count)];
             }
+            count--;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

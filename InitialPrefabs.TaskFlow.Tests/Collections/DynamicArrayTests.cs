@@ -13,6 +13,18 @@ namespace InitialPrefabs.TaskFlow.Collections.Tests {
         }
 
         [Test]
+        public void RemovingTheFirstElementInADynamicArray() {
+            var array = new DynamicArray<int>(3) { 1, 2, 3 };
+            array.RemoveAt(0);
+            Assert.Multiple(() => {
+                Assert.That(array, Has.Count.EqualTo(2));
+                for (var i = 0; i < 2; i++) {
+                    Assert.That(array[i], Is.EqualTo(i + 2));
+                }
+            });
+        }
+
+        [Test]
         public void ArrayInitialized() {
             var array = new DynamicArray<int>(10);
             Assert.Multiple(() => {

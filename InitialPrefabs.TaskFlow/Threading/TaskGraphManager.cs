@@ -1,12 +1,17 @@
 ﻿using InitialPrefabs.TaskFlow.Collections;
+using System;
 
 namespace InitialPrefabs.TaskFlow.Threading {
 
-    public struct GraphHandle {
+    public struct GraphHandle : IEquatable<GraphHandle> {
         internal ushort Index;
 
         public GraphHandle(ushort index) {
-            this.Index = index;
+            Index = index;
+        }
+
+        public bool Equals(GraphHandle other) {
+            return other.Index == Index;
         }
 
         public static implicit operator ushort(GraphHandle value) {
@@ -16,28 +21,29 @@ namespace InitialPrefabs.TaskFlow.Threading {
 
     public static class TaskGraphManager {
 
-        public static readonly DynamicArray<TaskGraph> TaskGraphs;
-        public static readonly DynamicArray<ushort> TaskHandleMetadata;
-        public static readonly DynamicArray<GraphHandle> Handles;
+        internal static readonly DynamicArray<TaskGraph> TaskGraphs = new DynamicArray<TaskGraph>(1);
+        internal static readonly DynamicArray<ushort> TaskHandleMetadata = new DynamicArray<ushort>(1);
+        internal static readonly DynamicArray<GraphHandle> Handles = new DynamicArray<GraphHandle>(1);
 
-        static TaskGraphManager() {
-            TaskGraphs = new DynamicArray<TaskGraph>(1) {
-                new TaskGraph(5)
-            };
+        public static void Initialize(int graphCapacity) {
+            Shutdown();
+            _ = CreateGraph(graphCapacity);
+        }
 
-            TaskHandleMetadata = new DynamicArray<ushort>(1) {
-                0
-            };
+        public static void Shutdown() {
+            foreach (var graph in TaskGraphs) {
+                graph.Reset();
+            }
 
-            Handles = new DynamicArray<GraphHandle>(1) {
-                new GraphHandle(0)
-            };
+            TaskGraphs.Clear();
+            TaskHandleMetadata.Clear();
+            Handles.Clear();
         }
 
         public static UnmanagedRef<GraphHandle> CreateGraph(int capacity = 5) {
+            Handles.Add(new GraphHandle((ushort)TaskGraphs.Count));
             TaskGraphs.Add(new TaskGraph(capacity));
             TaskHandleMetadata.Add(0);
-            Handles.Add(new GraphHandle((ushort)TaskGraphs.Count));
             ref var e = ref Handles.ElementAt(Handles.Count - 1);
             return new UnmanagedRef<GraphHandle>(ref e);
         }
@@ -58,7 +64,11 @@ namespace InitialPrefabs.TaskFlow.Threading {
             TaskHandleMetadata[handle] = 0;
         }
 
-        public static (TaskGraph graph, UnmanagedRef<ushort> uniqueId) Get(GraphHandle handle) {
+        public static (TaskGraph graph, UnmanagedRef<ushort> localGraphId) Get() {
+            return Get(default);
+        }
+
+        public static (TaskGraph graph, UnmanagedRef<ushort> localGraphId) Get(GraphHandle handle) {
             ref var metadata = ref TaskHandleMetadata.ElementAt(handle);
             return (TaskGraphs[handle], new UnmanagedRef<ushort>(ref metadata));
         }

@@ -23,7 +23,8 @@ namespace InitialPrefabs.TaskFlow.Examples {
             var graph = TaskGraphManager.Initialize();
             var source = new int[100];
 
-            for (var i = 0; i < 100; i++) {
+            for (var i = 0; i < 10000; i++) {
+                TaskGraphManager.ResetContext();
                 var handle = new AddTask {
                     A = source
                 }.ScheduleParallel(100, 20);

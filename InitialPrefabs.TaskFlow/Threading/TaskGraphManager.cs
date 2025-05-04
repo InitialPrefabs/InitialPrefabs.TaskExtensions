@@ -11,6 +11,11 @@
             return Default;
         }
 
+        public static void ResetContext() {
+            UniqueID = 0;
+            Default.Reset();
+        }
+
         public static void Shutdown() {
             Default.Reset();
             Default = null;

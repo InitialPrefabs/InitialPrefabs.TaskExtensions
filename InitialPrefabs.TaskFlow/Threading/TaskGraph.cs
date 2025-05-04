@@ -106,7 +106,6 @@ namespace InitialPrefabs.TaskFlow.Threading {
             }
 
             // Reset all metadata
-            Console.WriteLine($"Total: {Metadata.Collection.Length}");
             for (var i = 0; i < Metadata.Collection.Length; i++) {
                 ref var metadata = ref Metadata.Collection[i];
                 metadata.Reset();
@@ -136,14 +135,12 @@ namespace InitialPrefabs.TaskFlow.Threading {
                     var metadata = TaskMetadata.Default();
                     metadata.Workload = workload;
                     Metadata.Add(metadata);
-                    Console.WriteLine("New");
                 } else {
                     Metadata.count++;
                     ref var metadata = ref Metadata.ElementAt(Nodes.Count);
                     // Reset the task
                     metadata.Reset();
                     metadata.Workload = workload;
-                    Console.WriteLine($"Request: {metadata.State}");
                 }
 
                 // When we track a task, the associated metadata must also be enabled

@@ -18,15 +18,5 @@ namespace InitialPrefabs.TaskFlow.Utils {
         public static int Min(int a, int b) {
             return a < b ? a : b;
         }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int RoundToInt(float value) {
-            return (int)(value + (0.5f * (value < 0 ? -1 : 1)));
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int Clamp(int value, int max) {
-            return value > max ? max : value;
-        }
     }
 }

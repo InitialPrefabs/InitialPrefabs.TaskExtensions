@@ -4,9 +4,9 @@ using System.Collections.Generic;
 
 namespace InitialPrefabs.TaskFlow.Collections {
 
-    public class LinkedList<T0> : IEnumerable<LinkedList<T0>.Node<T0>> where T0 : unmanaged, IEquatable<T0> {
+    public class LinkedList<T0> : IEnumerable<LinkedList<T0>.Node<T0>> where T0 : IEquatable<T0> {
 
-        public struct Node<T1> : IEquatable<Node<T1>> where T1 : unmanaged, IEquatable<T1> {
+        public struct Node<T1> : IEquatable<Node<T1>> where T1 : IEquatable<T1> {
             internal short PreviousIdx;
             internal short NextIdx;
             public T1 Value;
@@ -18,7 +18,7 @@ namespace InitialPrefabs.TaskFlow.Collections {
             }
         }
 
-        public struct Enumerator<T1> : IEnumerator<Node<T1>> where T1 : unmanaged, IEquatable<T1> {
+        public struct Enumerator<T1> : IEnumerator<Node<T1>> where T1 : IEquatable<T1> {
             public short[] UsedList;
             public Node<T1>[] Nodes;
             public int Index;
@@ -68,7 +68,7 @@ namespace InitialPrefabs.TaskFlow.Collections {
             _ = AddFirst(value);
         }
 
-        public UnmanagedRef<T0> AddFirst(T0 item) {
+        public T0 AddFirst(T0 item) {
             // Take the first node
             var freeIndex = FreeList[0];
             FreeList.RemoveAtSwapback(0);
@@ -83,10 +83,17 @@ namespace InitialPrefabs.TaskFlow.Collections {
             HeadIndex = freeIndex;
             TailIndex = freeIndex;
 
-            return new UnmanagedRef<T0>(ref Nodes[freeIndex].Value);
+            return Nodes[freeIndex].Value;
         }
 
-        public UnmanagedRef<T0> Append(T0 item) {
+        public T0 Append(T0 item) {
+            if (FreeList.Count == 0) {
+                // We have to force resize the collection, because we have no free handles left
+                Array.Resize(ref Nodes, Nodes.Length + 1);
+                // We have to add to the free list.
+                FreeList.Add((short)(Nodes.Length - 1));
+            }
+
             if (UseList.Count == 0) {
                 return AddFirst(item);
             } else {
@@ -104,7 +111,7 @@ namespace InitialPrefabs.TaskFlow.Collections {
 
                 lastNode.NextIdx = nextFree;
                 TailIndex = nextFree;
-                return new UnmanagedRef<T0>(ref Nodes[nextFree].Value);
+                return Nodes[nextFree].Value;
             }
         }
 

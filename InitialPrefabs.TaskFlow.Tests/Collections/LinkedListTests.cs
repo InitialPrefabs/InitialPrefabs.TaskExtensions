@@ -38,17 +38,17 @@ namespace InitialPrefabs.TaskFlow.Collections.Tests {
         [Test]
         public void AddToHeadTest() {
             var value = linkedList.AddFirst(10);
-            Assert.That(value.Ref, Is.EqualTo(10));
+            Assert.That(value, Is.EqualTo(10));
             CommonFirstTest(0, 0, 10);
         }
 
         [Test]
         public void AppendTest() {
             var value = linkedList.Append(11);
-            Assert.That(value.Ref, Is.EqualTo(11));
+            Assert.That(value, Is.EqualTo(11));
             CommonFirstTest(0, 0, 11);
             value = linkedList.Append(12);
-            Assert.That(value.Ref, Is.EqualTo(12));
+            Assert.That(value, Is.EqualTo(12));
             Assert.Multiple(() => {
                 Assert.That(linkedList, Has.Count.EqualTo(2),
                     "Tail not added.");
@@ -59,9 +59,9 @@ namespace InitialPrefabs.TaskFlow.Collections.Tests {
 
         private void CommonMiddleTest() {
             Assert.Multiple(() => {
-                Assert.That(linkedList.Append(1).Ref, Is.EqualTo(1));
-                Assert.That(linkedList.Append(2).Ref, Is.EqualTo(2));
-                Assert.That(linkedList.Append(3).Ref, Is.EqualTo(3));
+                Assert.That(linkedList.Append(1), Is.EqualTo(1));
+                Assert.That(linkedList.Append(2), Is.EqualTo(2));
+                Assert.That(linkedList.Append(3), Is.EqualTo(3));
             });
 
             var i = 0;

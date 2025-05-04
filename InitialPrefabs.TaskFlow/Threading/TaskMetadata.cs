@@ -33,8 +33,6 @@ namespace InitialPrefabs.TaskFlow.Threading {
             metadata.Workload = new TaskWorkload();
             metadata.Token.Reset();
             metadata.ExceptionReferences.Clear();
-
-            Console.WriteLine($"Restted: {metadata.State}");
         }
     }
 }

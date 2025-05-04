@@ -27,14 +27,11 @@ namespace InitialPrefabs.TaskFlow.Threading {
         // TODO: Add the dependencies, the dependencies need to store the handles.
         internal FixedUInt16Array32 Parents;
 
-        public TaskHandle(LocalHandle<T0> local, GraphHandle graphHandle) {
-            (var graph, var localGraphId) = TaskGraphManager.Get(graphHandle);
+        public TaskHandle(LocalHandle<T0> local) {
             LocalHandle = local;
             Parents = new FixedUInt16Array32();
-            GlobalHandle = localGraphId.Ref++;
+            GlobalHandle = TaskGraphManager.UniqueID++;
         }
-
-        public TaskHandle(LocalHandle<T0> handle) : this(handle, default) { }
 
         public readonly ushort LocalID => LocalHandle;
 
@@ -72,17 +69,14 @@ namespace InitialPrefabs.TaskFlow.Threading {
     public static class TaskHandleExtensions {
         public static void DependsOn<T0, T1>(
             this ref TaskHandle<T0> handle,
-            TaskHandle<T1> dependsOn,
-            GraphHandle graphHandle = default)
+            TaskHandle<T1> dependsOn)
             where T0 : struct, ITaskFor
             where T1 : struct, ITaskFor {
 
-            (var graph, var _) = TaskGraphManager.Get(graphHandle);
-
-            var handleIdx = graph.Nodes.IndexOf(handle, new INodeComparer<ushort>());
+            var handleIdx = TaskGraphManager.Default.Nodes.IndexOf(handle, new INodeComparer<ushort>());
             if (handleIdx > -1) {
                 handle.Parents.Add(dependsOn.GlobalID);
-                graph.Nodes[handleIdx] = handle;
+                TaskGraphManager.Default.Nodes[handleIdx] = handle;
             } else {
                 throw new InvalidOperationException($"TaskHandle {handle.GetType()} with " +
                     $"ID: {handle.GlobalID}, cannot track TaskHandle, {dependsOn.GetType()} " +
@@ -103,7 +97,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
             return task.Schedule(dependencies);
         }
 
-        public static TaskHandle<T0> Schedule<T0>(this T0 task, Span<ushort> dependsOn, GraphHandle graphHandle = default)
+        public static TaskHandle<T0> Schedule<T0>(this T0 task, Span<ushort> dependsOn)
             where T0 : struct, ITaskFor {
             var handle = TaskUnitPool<T0>.Rent(task);
             var dependencies = new FixedUInt16Array32();
@@ -115,8 +109,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
                 Parents = dependencies
             };
 
-            var pair = TaskGraphManager.Get(graphHandle);
-            pair.graph.Track(taskHandle, TaskWorkload.SingleUnit());
+            TaskGraphManager.Default.Track(taskHandle, TaskWorkload.SingleUnit());
             return taskHandle;
         }
 
@@ -136,7 +129,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
         public static TaskHandle<T0> Schedule<T0>(
             this T0 task,
             int length,
-            Span<ushort> dependsOn, GraphHandle graphHandle = default)
+            Span<ushort> dependsOn)
             where T0 : struct, ITaskFor {
 
             var handle = TaskUnitPool<T0>.Rent(task);
@@ -146,62 +139,54 @@ namespace InitialPrefabs.TaskFlow.Threading {
                 parents.Add(dependsOn[i]);
             }
 
-            (var graph, var _) = TaskGraphManager.Get(graphHandle);
             var taskHandle = new TaskHandle<T0>(handle) {
                 Parents = parents
             };
 
-            graph.Track(taskHandle, TaskWorkload.LoopedSingleUnit(length));
+            TaskGraphManager.Default.Track(taskHandle, TaskWorkload.LoopedSingleUnit(length));
             return taskHandle;
         }
 
         public static TaskHandle<T0> ScheduleParallel<T0>(
             this T0 task,
             int total,
-            int batchSize,
-            GraphHandle graphHandle = default)
+            int batchSize)
             where T0 : struct, ITaskFor {
             var dependencies = Span<ushort>.Empty;
             return task.ScheduleParallel(
                 TaskWorkload.MultiUnit(total, batchSize),
-                dependencies,
-                graphHandle);
+                dependencies);
         }
 
         public static TaskHandle<T0> ScheduleParallel<T0, T1>(
             this T0 task,
             int total,
             int batchSize,
-            TaskHandle<T1> dependsOn,
-            GraphHandle graphHandle = default)
+            TaskHandle<T1> dependsOn)
             where T0 : struct, ITaskFor
             where T1 : struct, ITaskFor {
             Span<ushort> dependencies = stackalloc ushort[1] { dependsOn.GlobalID };
             return task.ScheduleParallel(
                 TaskWorkload.MultiUnit(total, batchSize),
-                dependencies,
-                graphHandle);
+                dependencies);
         }
 
         public static TaskHandle<T0> ScheduleParallel<T0>(
             this T0 task,
             int total,
             int batchSize,
-            Span<ushort> dependsOn,
-            GraphHandle graphHandle = default)
+            Span<ushort> dependsOn)
             where T0 : struct, ITaskFor {
 
             return task.ScheduleParallel(
                 TaskWorkload.MultiUnit(total, batchSize),
-                dependsOn,
-                graphHandle);
+                dependsOn);
         }
 
         public static TaskHandle<T0> ScheduleParallel<T0>(
             this T0 task,
             TaskWorkload workload,
-            Span<ushort> dependsOn,
-            GraphHandle graphHandle = default)
+            Span<ushort> dependsOn)
             where T0 : struct, ITaskFor {
             var handle = TaskUnitPool<T0>.Rent(task);
             var parents = new FixedUInt16Array32();
@@ -214,9 +199,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
                 Parents = parents
             };
 
-            (var graph, var _) = TaskGraphManager.Get(graphHandle);
-            Console.WriteLine($"From Scheduling: {workload}");
-            graph.Track(taskHandle, workload);
+            TaskGraphManager.Default.Track(taskHandle, workload);
             return taskHandle;
         }
 

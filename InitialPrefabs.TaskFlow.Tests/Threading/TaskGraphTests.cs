@@ -8,42 +8,16 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
     public class TaskGraphManagerTests {
         [SetUp]
         public void SetUp() {
-            TaskGraphManager.Initialize(5);
-            Console.WriteLine($"Count:: {TaskGraphManager.TaskGraphs.Count}");
-        }
-
-        [Test]
-        public void CreateAndRemoveGraph() {
-            Console.WriteLine($"Count:: {TaskGraphManager.TaskGraphs.Count}");
-            var graphHandle = TaskGraphManager.CreateGraph();
-            Console.WriteLine($"Count:: {TaskGraphManager.TaskGraphs.Count}");
-            Assert.That(graphHandle.Ref.Index, Is.EqualTo(1),
-                   "There should be 2 graphs");
-
-            Assert.Multiple(static () => {
-                Assert.That(TaskGraphManager.TaskGraphs, Has.Count.EqualTo(2));
-                Assert.That(TaskGraphManager.TaskHandleMetadata, Has.Count.EqualTo(2));
-                Assert.That(TaskGraphManager.Handles, Has.Count.EqualTo(2));
-            });
-
-            TaskGraphManager.RemoveGraph(new GraphHandle(0));
-
-            Assert.Multiple(() => {
-                Assert.That(TaskGraphManager.TaskGraphs, Has.Count.EqualTo(1));
-                Assert.That(TaskGraphManager.TaskHandleMetadata, Has.Count.EqualTo(1));
-                Assert.That(TaskGraphManager.Handles, Has.Count.EqualTo(1));
-
-                Assert.That(graphHandle.Ref.Index, Is.EqualTo(0), "The graph's local index should be adjusted.");
+            Assert.DoesNotThrow(static () => {
+                TaskGraphManager.Initialize(5);
             });
         }
 
         [TearDown]
         public void TearDown() {
-            TaskGraphManager.Shutdown();
-            var exception = Assert.Throws<IndexOutOfRangeException>(static () => {
-                _ = TaskGraphManager.Get();
+            Assert.DoesNotThrow(static () => {
+                TaskGraphManager.Shutdown();
             });
-            Assert.That(exception, Is.Not.Null);
         }
     }
 
@@ -89,9 +63,7 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
 
         [SetUp]
         public void SetUp() {
-            TaskGraphManager.Initialize(5);
-            (var graph, var _) = TaskGraphManager.Get(default);
-            this.graph = graph;
+            graph = TaskGraphManager.Initialize(5);
             var bitArray = new NoAllocBitArray(graph.Bytes.AsSpan());
             var index = 0;
             foreach (var element in bitArray) {
@@ -178,7 +150,6 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
                     Is.EqualTo(order[i]),
                     $"Failed at {i} with value: {order[i]}, mismatched order");
             }
-
 
             Assert.Multiple(() => {
                 var groups = graph.Groups;

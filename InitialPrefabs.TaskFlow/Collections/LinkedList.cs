@@ -65,10 +65,10 @@ namespace InitialPrefabs.TaskFlow.Collections {
         }
 
         public LinkedList(int capacity, T0 value) : this(capacity) {
-            AddFirst(value);
+            _ = AddFirst(value);
         }
 
-        public void AddFirst(T0 item) {
+        public UnmanagedRef<T0> AddFirst(T0 item) {
             // Take the first node
             var freeIndex = FreeList[0];
             FreeList.RemoveAtSwapback(0);
@@ -82,11 +82,13 @@ namespace InitialPrefabs.TaskFlow.Collections {
 
             HeadIndex = freeIndex;
             TailIndex = freeIndex;
+
+            return new UnmanagedRef<T0>(ref Nodes[freeIndex].Value);
         }
 
-        public void Append(T0 item) {
+        public UnmanagedRef<T0> Append(T0 item) {
             if (UseList.Count == 0) {
-                AddFirst(item);
+                return AddFirst(item);
             } else {
                 var last = UseList[^1];
                 ref var lastNode = ref Nodes[last];
@@ -94,14 +96,15 @@ namespace InitialPrefabs.TaskFlow.Collections {
                 var nextFree = FreeList[0];
                 FreeList.RemoveAtSwapback(0);
                 UseList.Add(nextFree);
-                var node = new Node<T0> {
+                Nodes[nextFree] = new Node<T0> {
                     NextIdx = -1,
                     Value = item,
                     PreviousIdx = last
                 };
+
                 lastNode.NextIdx = nextFree;
-                Nodes[nextFree] = node;
                 TailIndex = nextFree;
+                return new UnmanagedRef<T0>(ref Nodes[nextFree].Value);
             }
         }
 
@@ -136,6 +139,19 @@ namespace InitialPrefabs.TaskFlow.Collections {
                     break;
                 }
             }
+        }
+
+        public ref Node<T0> ElementAt(int idx) {
+            var remapped = UseList[idx];
+            return ref Nodes[remapped];
+        }
+
+        public void Clear() {
+            foreach (var element in UseList) {
+                FreeList.Add(element);
+            }
+
+            UseList.Clear();
         }
 
         public IEnumerator<Node<T0>> GetEnumerator() {

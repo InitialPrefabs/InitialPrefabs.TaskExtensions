@@ -23,7 +23,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
 
         internal static readonly DynamicArray<TaskGraph> TaskGraphs = new DynamicArray<TaskGraph>(1);
         internal static readonly DynamicArray<ushort> TaskHandleMetadata = new DynamicArray<ushort>(1);
-        internal static readonly DynamicArray<GraphHandle> Handles = new DynamicArray<GraphHandle>(1);
+        internal static readonly LinkedList<GraphHandle> Handles = new LinkedList<GraphHandle>(1);
 
         public static void Initialize(int graphCapacity) {
             Shutdown();
@@ -41,21 +41,21 @@ namespace InitialPrefabs.TaskFlow.Threading {
         }
 
         public static UnmanagedRef<GraphHandle> CreateGraph(int capacity = 5) {
-            Handles.Add(new GraphHandle((ushort)TaskGraphs.Count));
+            var handle = Handles.Append(new GraphHandle((ushort)TaskGraphs.Count));
             TaskGraphs.Add(new TaskGraph(capacity));
             TaskHandleMetadata.Add(0);
-            ref var e = ref Handles.ElementAt(Handles.Count - 1);
-            return new UnmanagedRef<GraphHandle>(ref e);
+            return handle;
         }
 
         public static void RemoveGraph(GraphHandle handle) {
             TaskGraphs.RemoveAt(handle);
             TaskHandleMetadata.RemoveAt(handle);
-            Handles.RemoveAt(handle);
+            Handles.Remove(handle);
 
+            // TODO: Double check this
             for (ushort i = 0; i < Handles.Count; i++) {
-                ref var graphHandle = ref Handles.ElementAt(i);
-                graphHandle.Index = i;
+                ref var node = ref Handles.ElementAt(i);
+                node.Value.Index = i;
             }
         }
 

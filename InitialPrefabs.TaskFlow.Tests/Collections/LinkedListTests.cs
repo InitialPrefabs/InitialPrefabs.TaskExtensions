@@ -37,15 +37,18 @@ namespace InitialPrefabs.TaskFlow.Collections.Tests {
 
         [Test]
         public void AddToHeadTest() {
-            linkedList.AddFirst(10);
+            var value = linkedList.AddFirst(10);
+            Assert.That(value.Ref, Is.EqualTo(10));
             CommonFirstTest(0, 0, 10);
         }
 
         [Test]
         public void AppendTest() {
-            linkedList.Append(11);
+            var value = linkedList.Append(11);
+            Assert.That(value.Ref, Is.EqualTo(11));
             CommonFirstTest(0, 0, 11);
-            linkedList.Append(12);
+            value = linkedList.Append(12);
+            Assert.That(value.Ref, Is.EqualTo(12));
             Assert.Multiple(() => {
                 Assert.That(linkedList, Has.Count.EqualTo(2),
                     "Tail not added.");
@@ -55,9 +58,11 @@ namespace InitialPrefabs.TaskFlow.Collections.Tests {
         }
 
         private void CommonMiddleTest() {
-            linkedList.Append(1);
-            linkedList.Append(2);
-            linkedList.Append(3);
+            Assert.Multiple(() => {
+                Assert.That(linkedList.Append(1).Ref, Is.EqualTo(1));
+                Assert.That(linkedList.Append(2).Ref, Is.EqualTo(2));
+                Assert.That(linkedList.Append(3).Ref, Is.EqualTo(3));
+            });
 
             var i = 0;
             foreach (var node in linkedList) {
@@ -124,6 +129,13 @@ namespace InitialPrefabs.TaskFlow.Collections.Tests {
                 Assert.That(linkedList.Tail.PreviousIdx, Is.EqualTo(0));
                 Assert.That(linkedList.Tail.NextIdx, Is.EqualTo(-1));
             });
+        }
+
+        [Test]
+        public void ClearTest() {
+            CommonMiddleTest();
+            linkedList.Clear();
+            Assert.That(linkedList, Has.Count.EqualTo(0));
         }
     }
 }

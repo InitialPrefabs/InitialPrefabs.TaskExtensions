@@ -20,7 +20,7 @@ namespace InitialPrefabs.TaskFlow.Examples {
 
     public class Program {
         public static void Main(string[] argv) {
-            var graph = TaskGraphManager.Initialize();
+            _ = TaskGraphManager.Initialize();
             var source = new int[100];
 
             for (var i = 0; i < 10000; i++) {
@@ -33,8 +33,7 @@ namespace InitialPrefabs.TaskFlow.Examples {
                     A = source
                 }.ScheduleParallel(100, 20, handle);
 
-                graph.Sort();
-                graph.Process();
+                TaskGraphManager.Process();
             }
 
             TaskGraphManager.Shutdown();

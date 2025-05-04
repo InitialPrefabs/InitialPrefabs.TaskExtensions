@@ -2,6 +2,8 @@
 
     public static class TaskGraphManager {
 
+        public static TaskGraph Graph => Default;
+
         internal static TaskGraph Default;
         internal static ushort UniqueID;
 
@@ -14,6 +16,11 @@
         public static void ResetContext() {
             UniqueID = 0;
             Default.Reset();
+        }
+
+        public static void Process() {
+            Default.Sort();
+            Default.Process();
         }
 
         public static void Shutdown() {

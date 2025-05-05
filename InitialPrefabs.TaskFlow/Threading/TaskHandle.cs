@@ -18,6 +18,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
         }
     }
 
+    // TODO: Maybe this should be stored as a class and reused.
     public struct TaskHandle<T0> : INode<ushort>
         where T0 : struct, ITaskFor {
 
@@ -105,11 +106,12 @@ namespace InitialPrefabs.TaskFlow.Threading {
                 dependencies.Add(dependsOn[i]);
             }
 
+            // TODO: Rent this
             var taskHandle = new TaskHandle<T0>(handle) {
                 Parents = dependencies
             };
 
-            TaskGraphManager.Default.Track(taskHandle, TaskWorkload.SingleUnit());
+            TaskGraphManager.Default.Track<TaskHandle<T0>>(taskHandle, TaskWorkload.SingleUnit());
             return taskHandle;
         }
 
@@ -139,11 +141,12 @@ namespace InitialPrefabs.TaskFlow.Threading {
                 parents.Add(dependsOn[i]);
             }
 
+            // TODO: Rent this
             var taskHandle = new TaskHandle<T0>(handle) {
                 Parents = parents
             };
 
-            TaskGraphManager.Default.Track(taskHandle, TaskWorkload.LoopedSingleUnit(length));
+            TaskGraphManager.Default.Track<TaskHandle<T0>>(taskHandle, TaskWorkload.LoopedSingleUnit(length));
             return taskHandle;
         }
 
@@ -195,11 +198,12 @@ namespace InitialPrefabs.TaskFlow.Threading {
                 parents.Add(dependsOn[i]);
             }
 
+            // TODO: Rent this
             var taskHandle = new TaskHandle<T0>(handle) {
                 Parents = parents
             };
 
-            TaskGraphManager.Default.Track(taskHandle, workload);
+            TaskGraphManager.Default.Track<TaskHandle<T0>>(taskHandle, workload);
             return taskHandle;
         }
 

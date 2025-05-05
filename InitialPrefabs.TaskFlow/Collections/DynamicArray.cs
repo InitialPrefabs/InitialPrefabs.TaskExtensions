@@ -31,6 +31,26 @@ namespace InitialPrefabs.TaskFlow.Collections {
     /// </summary>
     public class DynamicArray<T0> : IEnumerable<T0>, IReadOnlyList<T0> {
 
+        public struct Enumerator<T1> : IEnumerator<T1> {
+            public T1[] Ptr;
+            public int Length;
+            public int Index;
+
+            public readonly T1 Current => Ptr[Index];
+
+            readonly object IEnumerator.Current => Current;
+
+            public readonly void Dispose() { }
+
+            public bool MoveNext() {
+                return ++Index < Length;
+            }
+
+            public void Reset() {
+                Index = -1;
+            }
+        }
+
         internal T0[] Collection;
 
         public int Capacity => Collection.Length;
@@ -134,9 +154,11 @@ namespace InitialPrefabs.TaskFlow.Collections {
         }
 
         public IEnumerator<T0> GetEnumerator() {
-            for (var i = 0; i < Count; i++) {
-                yield return Collection[i];
-            }
+            return new Enumerator<T0> {
+                Index = -1,
+                Length = Count,
+                Ptr = Collection
+            };
         }
 
         IEnumerator IEnumerable.GetEnumerator() {

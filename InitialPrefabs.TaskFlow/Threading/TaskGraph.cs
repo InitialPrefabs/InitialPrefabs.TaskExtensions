@@ -101,7 +101,8 @@ namespace InitialPrefabs.TaskFlow.Threading {
         }
 
         public void Reset() {
-            foreach (var node in Nodes) {
+            for (var i = 0; i < Nodes.Count; i++) {
+                var node = Nodes[i];
                 node.Dispose();
             }
 

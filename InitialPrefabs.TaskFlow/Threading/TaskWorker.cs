@@ -25,6 +25,13 @@ namespace InitialPrefabs.TaskFlow.Threading {
     // worker on a thread.
     public sealed class TaskWorker : IDisposable {
 
+        private struct Payload {
+            public UnmanagedRef<TaskMetadata> TaskMetadata;
+            public Action TaskAction;
+            public Action OnComplete;
+            public int Index;
+        };
+
         internal readonly ManualResetEvent WaitHandle;
 
         public TaskWorker() {
@@ -42,21 +49,26 @@ namespace InitialPrefabs.TaskFlow.Threading {
 
             // When we start a new Unit Task, we have to go through the try catch finally block
             // to safely execute each thread
-            _ = ThreadPool.UnsafeQueueUserWorkItem(_ => {
-                ref var m = ref metadata.Ref;
+            _ = ThreadPool.UnsafeQueueUserWorkItem(static state => {
+                var payload = (Payload)state;
+                ref var m = ref payload.TaskMetadata.Ref;
                 try {
-                    action.Invoke();
+                    payload.TaskAction();
                 } catch (Exception err) {
                     LogUtils.Emit(err);
                     m.State = TaskState.Faulted;
                     m.Token.Cancel();
                 } finally {
-                    Complete();
+                    payload.OnComplete();
                     if (m.State != TaskState.Faulted) {
                         m.State = TaskState.Completed;
                     }
                 }
-            }, null);
+            }, new Payload {
+                OnComplete = Complete,
+                TaskAction = action,
+                TaskMetadata = metadata
+            });
         }
 
         public void Start(Action action, UnmanagedRef<TaskMetadata> metadata, int index) {
@@ -70,19 +82,25 @@ namespace InitialPrefabs.TaskFlow.Threading {
 
             // When we start a new Unit Task, we have to go through the try catch finally block
             // to safely execute each thread
-            _ = ThreadPool.UnsafeQueueUserWorkItem(_ => {
-                ref var m = ref metadata.Ref;
+            _ = ThreadPool.UnsafeQueueUserWorkItem(static state => {
+                var payload = (Payload)state;
+                ref var m = ref payload.TaskMetadata.Ref;
                 try {
-                    action.Invoke();
+                    payload.TaskAction.Invoke();
                 } catch (Exception err) {
                     LogUtils.Emit(err);
                     m.State = TaskState.Faulted;
                     m.Token.Cancel();
                 } finally {
-                    Complete();
-                    _ = Interlocked.Exchange(ref m.CompletionFlags, 1 << index);
+                    payload.OnComplete();
+                    _ = Interlocked.Exchange(ref m.CompletionFlags, 1 << payload.Index);
                 }
-            }, null);
+            }, new Payload {
+                Index = index,
+                OnComplete = Complete,
+                TaskAction = action,
+                TaskMetadata = metadata
+            });
         }
 
 

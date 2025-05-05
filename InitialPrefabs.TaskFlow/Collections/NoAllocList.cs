@@ -36,13 +36,6 @@ namespace InitialPrefabs.TaskFlow.Collections {
             Count = count;
         }
 
-        public void Add(T item) {
-            if (Count >= Length) {
-                return;
-            }
-            Span[Count++] = item;
-        }
-
         public readonly NoAllocEnumerator<T> GetEnumerator() {
             return new NoAllocEnumerator<T> {
                 Ptr = Span,

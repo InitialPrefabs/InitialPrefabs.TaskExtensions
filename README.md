@@ -3,7 +3,7 @@
 ## New Version (`develop` branch)
 
 The new version, now named TaskFlow, allows you to write Tasks similar to Unity's Job System. You 
-will still chedule Task structs, however a `TaskHandle` is returned when scheduling. This allows 
+will still schedule Task structs, however a `TaskHandle` is returned when scheduling. This allows 
 you to take the `TaskHandle` and feed it as a dependency to the next `Task` that needs to be 
 scheduling, creating a dependency chain.
 

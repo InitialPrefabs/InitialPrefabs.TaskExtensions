@@ -1,4 +1,27 @@
-# Task Extensions
+# Task Flow
+
+## New Version (`develop` branch)
+
+The new version, now named TaskFlow, allows you to write Tasks similar to Unity's Job System. You 
+will still chedule Task structs, however a `TaskHandle` is returned when scheduling. This allows 
+you to take the `TaskHandle` and feed it as a dependency to the next `Task` that needs to be 
+scheduling, creating a dependency chain.
+
+The **_most independent_** Tasks will be scheduled to run **first** and the **_least independent_** tasks will be 
+scheduled to run **last**. This allows you to chain a bunch of Tasks together to run later in your pipeline.
+
+The core features of this new system are in, the remaining work that needs to be done are:
+
+- [ ] Setting up configurations through a Builder struct
+- [ ] Reducing GC Pressure when scheduling Tasks each frame
+- [ ] Combining dependencies together
+
+Supports the following .NET versions:
+* .NET 8 LTS
+* .NET 2.1 Standard
+
+<details>
+<summary>Legacy information of the main branch.</summary>
 
 Allows you to write `Task` structs by implementing
 
@@ -9,10 +32,6 @@ and calling `Schedule(...)`.
 
 This follows a similar style to Unity's Job System where you implement Job structs with `IJob` and 
 `IJobParallelFor`.
-
-Supports the following .NET versions:
-* .NET 8 LTS
-* .NET 2.1 Standard
 
 ## Example
 ```cs
@@ -68,3 +87,5 @@ Output:
 ## Future Plans
 * Looking into Task Dependency Handle and TaskQueue
 * Custom control on queuing the Task but not launching it
+
+</details>

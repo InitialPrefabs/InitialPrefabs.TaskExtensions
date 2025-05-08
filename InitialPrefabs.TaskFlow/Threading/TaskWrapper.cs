@@ -19,6 +19,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
             }
         }
 
+        [System.Obsolete("Add parameters to the rent so I can just set the values")]
         public static (TaskWrapper wrapper, ushort localIndex) Rent() {
             var free = FreeList[0];
             FreeList.RemoveAtSwapback(0);

@@ -22,7 +22,7 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
             }
         }
 
-        private readonly DynamicArray<LocalHandle<S>> handles = new DynamicArray<LocalHandle<S>>(5);
+        private readonly DynamicArray<LocalHandle> handles = new DynamicArray<LocalHandle>(5);
 
         [SetUp]
         public void SetUp() {
@@ -37,7 +37,7 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
             Assert.That((ushort)handle,
                     Is.EqualTo(TaskUnitPool<S>.Capacity - 1),
                     "Handle Index is not correct.");
-            var handles = new DynamicArray<LocalHandle<S>>(5) { handle };
+            var handles = new DynamicArray<LocalHandle>(5) { handle };
 
             Assert.Multiple(() => {
                 var remaining = TaskUnitPool<S>.Remaining;

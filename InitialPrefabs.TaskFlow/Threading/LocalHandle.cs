@@ -2,23 +2,23 @@
 
 namespace InitialPrefabs.TaskFlow.Threading {
 
-    public readonly struct LocalHandle<T0> : IEquatable<LocalHandle<T0>> where T0 : struct, ITaskFor {
+    public readonly struct LocalHandle : IEquatable<LocalHandle> {
         private readonly ushort index;
 
         public LocalHandle(ushort index) {
             this.index = index;
         }
 
-        public bool Equals(LocalHandle<T0> other) {
+        public bool Equals(LocalHandle other) {
             return other.index == index;
         }
 
-        public static implicit operator ushort(LocalHandle<T0> value) {
+        public static implicit operator ushort(LocalHandle value) {
             return value.index;
         }
 
-        public static implicit operator LocalHandle<T0>(ushort value) {
-            return new LocalHandle<T0>(value);
+        public static implicit operator LocalHandle(ushort value) {
+            return new LocalHandle(value);
         }
     }
 }

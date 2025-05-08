@@ -9,7 +9,7 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
         [SetUp]
         public void SetUp() {
             Assert.DoesNotThrow(static () => {
-                TaskGraphManager.Initialize(5);
+                _ = TaskGraphManager.Initialize(5);
             });
         }
 
@@ -98,15 +98,15 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
             graph.Reset();
             Assert.Multiple(() => {
                 Assert.That(graph.Nodes, Has.Count.EqualTo(0));
-                Assert.That(graph.Metadata, Has.Count.EqualTo(0));
+                Assert.That(graph.TaskMetadata, Has.Count.EqualTo(0));
             });
 
             var handleA = new S { }.ScheduleParallel(128, 32);
 
             Assert.Multiple(() => {
                 Assert.That(graph.Nodes, Has.Count.EqualTo(1));
-                Assert.That(graph.Metadata, Has.Count.EqualTo(1));
-                var metadata = graph.Metadata[0];
+                Assert.That(graph.TaskMetadata, Has.Count.EqualTo(1));
+                var metadata = graph.TaskMetadata[0];
 
                 Assert.That(metadata.Workload.Type,
                     Is.EqualTo(WorkloadType.MultiThreadLoop));
@@ -288,7 +288,7 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
                 var cond = rand.NextSingle() >= 0.5f;
                 _ = cond ? new S { }.ScheduleParallel(16, 32) : new S { }.Schedule();
 
-                var metadata = graph.Metadata[i];
+                var metadata = graph.TaskMetadata[i];
 
                 Assert.Multiple(() => {
                     Assert.That(metadata.State, Is.EqualTo(TaskState.NotStarted),
@@ -297,7 +297,7 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
                         new TaskWorkload { BatchSize = 32, Total = 16 } :
                         new TaskWorkload { BatchSize = 0, Total = 1 };
                     Assert.That(
-                        graph.Metadata,
+                        graph.TaskMetadata,
                         Has.Count.EqualTo(i + 1),
                         $"Metadata not incremented, failed at {i}");
                 });
@@ -306,7 +306,7 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
             _ = new S { }.Schedule();
 
             Assert.That(
-                graph.Metadata,
+                graph.TaskMetadata,
                 Has.Count.EqualTo(6), $"New Metadata has not been reserved");
         }
 

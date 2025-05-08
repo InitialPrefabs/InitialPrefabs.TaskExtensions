@@ -11,59 +11,59 @@ namespace InitialPrefabs.TaskFlow.Threading {
     public static class TaskUnitPool<T0> where T0 : struct, ITaskFor {
 
         internal static readonly DynamicArray<T0> Tasks;
-        internal static readonly DynamicArray<ushort> FreeIndices;
+        internal static readonly DynamicArray<ushort> FreeHandles;
+        internal static readonly DynamicArray<ushort> UsedHandles;
 
-        public static int Remaining => FreeIndices.Count;
+        public static int Remaining => FreeHandles.Count;
         public static int Capacity => Tasks.Capacity;
 
         static TaskUnitPool() {
             var capacity = 5;
             Tasks = new DynamicArray<T0>(capacity);
-            FreeIndices = new DynamicArray<ushort>(capacity);
+            FreeHandles = new DynamicArray<ushort>(capacity);
+            UsedHandles = new DynamicArray<ushort>(capacity);
 
             for (ushort i = 0; i < 5; i++) {
-                FreeIndices.Add(i);
+                FreeHandles.Add(i);
                 Tasks.Add(new T0());
             }
         }
 
         /// <summary>
-        /// Returns an allocated struct implementing <see cref="ITaskFor"/> to be copied into,
+        /// Returns an allocated struct implementing <see cref="ITaskFor"/> to be copied into.
         /// </summary>
         /// <param name="value">The task to perform a copy on into the TaskUnitPool.</param>
         /// <returns>A <see cref="LocalHandle{T0}"/> storing the index and Task container.</returns>
-        public static LocalHandle<T0> Rent(T0 value) {
-            if (FreeIndices.IsEmpty) {
-                var index = (ushort)Tasks.Count;
+        public static LocalHandle Rent(T0 value) {
+            if (FreeHandles.IsEmpty) {
+                var freeHandle = (ushort)Tasks.Count;
+                UsedHandles.Add(freeHandle);
                 Tasks.Add(value);
-                return new LocalHandle<T0>(index);
+                return new LocalHandle(freeHandle);
             } else {
-                var lastIndex = FreeIndices.Count - 1;
-                var freeIndex = FreeIndices[lastIndex];
-                FreeIndices.RemoveAtSwapback(lastIndex);
-                Tasks[freeIndex] = value;
-                return new LocalHandle<T0>(freeIndex);
+                var lastIndex = FreeHandles.Count - 1;
+                var freeHandle = FreeHandles[lastIndex];
+                UsedHandles.Add(freeHandle);
+                FreeHandles.RemoveAtSwapback(lastIndex);
+                Tasks[freeHandle] = value;
+                return new LocalHandle(freeHandle);
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void Return(LocalHandle<T0> handle) {
-            FreeIndices.Add(handle);
+        public static void Return(LocalHandle handle) {
+            FreeHandles.Add(handle);
         }
 
-        public static ref T0 ElementAt(LocalHandle<T0> handle) {
+        public static ref T0 ElementAt(LocalHandle handle) {
             return ref Tasks.Collection[handle];
         }
 
         public static void Reset() {
-            var capacity = Tasks.Capacity;
-            Tasks.ForceResize(capacity);
-            FreeIndices.ForceResize(capacity);
-            FreeIndices.Clear();
-
-            for (ushort i = 0; i < capacity; i++) {
-                FreeIndices.Add(i);
+            foreach (var element in UsedHandles) {
+                FreeHandles.Add(element);
             }
+            UsedHandles.Clear();
         }
     }
 }

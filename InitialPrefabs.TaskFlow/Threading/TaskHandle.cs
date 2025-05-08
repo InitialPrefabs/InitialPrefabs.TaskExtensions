@@ -4,12 +4,28 @@ using System.Collections.Generic;
 
 namespace InitialPrefabs.TaskFlow.Threading {
 
+    public struct NodeMetadata {
+        internal ushort LocalID;
+        internal ushort GlobalID;
+        internal FixedUInt16Array32 Parents;
+
+        public readonly bool IsEmpty() {
+            return Parents.Count == 0;
+        }
+    }
+
     public interface INode<T> : IDisposable where T : unmanaged {
+        [Obsolete]
         ushort LocalID { get; }
+        [Obsolete]
         ushort GlobalID { get; }
         ITaskFor Task { get; }
+        [Obsolete]
         ReadOnlySpan<T> GetDependencies();
+        [Obsolete]
         bool IsEmpty();
+
+        NodeMetadata Metadata { get; }
     }
 
     internal struct INodeComparer<T> : IComparer<INode<T>> where T : unmanaged {
@@ -22,13 +38,19 @@ namespace InitialPrefabs.TaskFlow.Threading {
     public struct TaskHandle<T0> : INode<ushort>
         where T0 : struct, ITaskFor {
 
-        internal readonly LocalHandle<T0> LocalHandle;
+        public readonly NodeMetadata Metadata => new NodeMetadata {
+            GlobalID = GlobalHandle,
+            LocalID = LocalHandle,
+            Parents = Parents
+        };
+
+        internal readonly LocalHandle LocalHandle;
         internal readonly ushort GlobalHandle;
 
         // TODO: Add the dependencies, the dependencies need to store the handles.
         internal FixedUInt16Array32 Parents;
 
-        public TaskHandle(LocalHandle<T0> local) {
+        public TaskHandle(LocalHandle local) {
             LocalHandle = local;
             Parents = new FixedUInt16Array32();
             GlobalHandle = TaskGraphManager.UniqueID++;
@@ -74,7 +96,8 @@ namespace InitialPrefabs.TaskFlow.Threading {
             where T0 : struct, ITaskFor
             where T1 : struct, ITaskFor {
 
-            var handleIdx = TaskGraphManager.Default.Nodes.IndexOf(handle, new INodeComparer<ushort>());
+            var handleIdx = TaskGraphManager.Default.Nodes.IndexOf(handle,
+                new INodeComparer<ushort>());
             if (handleIdx > -1) {
                 handle.Parents.Add(dependsOn.GlobalID);
                 TaskGraphManager.Default.Nodes[handleIdx] = handle;

@@ -142,6 +142,8 @@ namespace InitialPrefabs.TaskFlow.Threading {
             var bitArray = new NoAllocBitArray(span);
             var nodeMetadata = trackedTask.Metadata;
             if (!bitArray[nodeMetadata.GlobalID]) {
+                // TODO: What the fuck am I doing here? I can just reset the counter and increment
+                // The structs will be copied anyways...why am I trying to recycle this?
                 if (NodeMetadata.Count >= TaskMetadata.Capacity) {
                     // We need to add a default metadata
                     var metadata = Threading.TaskMetadata.Default();

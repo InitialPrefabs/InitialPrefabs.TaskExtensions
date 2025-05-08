@@ -24,7 +24,7 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
 
         [TearDown]
         public void TearDown() {
-            buffer.Dispose();
+            ((IDisposable)buffer).Dispose();
             for (var i = 0; i < buffer.Workers.Length; i++) {
                 var worker = buffer.Workers[i];
                 worker.WaitHandle.Dispose();

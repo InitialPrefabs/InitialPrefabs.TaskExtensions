@@ -58,11 +58,12 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
             Prepare(ref metadataA, out var refA);
             var sum = 0;
 
-            workerA.Start(() => {
+            workerA.Enqueue(() => {
                 Thread.Sleep(100);
                 Console.WriteLine("Finished rewindable");
                 sum = 1 + 1;
-            }, refA);
+            }, refA, -1, 0);
+            workerA.Start();
             workerA.Wait();
 
             Assert.Multiple(() => {
@@ -77,15 +78,14 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
         [Test]
         public void WaitSingleRewindableTaskUnitWithException() {
             Prepare(ref metadataA, out var refA);
-            workerA.Start(static () => {
+            workerA.Enqueue(static () => {
                 throw new InvalidOperationException("Forcing a fault");
-            }, refA);
+            }, refA, -1, 0);
+            workerA.Start();
             workerA.Wait();
 
-            Assert.Multiple(() => {
-                Assert.That(metadataA.State, Is.EqualTo(TaskState.Faulted),
-                    "The task should have faulted and earlied out");
-            });
+            Assert.That(metadataA.State, Is.EqualTo(TaskState.Faulted),
+                "The task should have faulted and earlied out");
         }
 
         [Test]
@@ -96,15 +96,18 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
             watchA.Start();
             watchB.Start();
 
-            workerA.Start(() => {
+            workerA.Enqueue(() => {
                 Thread.Sleep(100);
                 watchA.Stop();
-            }, refA);
+            }, refA, -1, 0);
 
-            workerB.Start(() => {
+            workerB.Enqueue(() => {
                 Thread.Sleep(200);
                 watchB.Stop();
-            }, refB);
+            }, refB, -1, 0);
+
+            workerA.Start();
+            workerB.Start();
 
             var array = new TaskWorker[] { workerA, workerB };
             TaskWorker.WaitAll(array);
@@ -119,13 +122,14 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
         public void ReusingAWorker() {
             Prepare(ref metadataA, out var refA);
 
-            watchA.Start();
-            workerA.Start(() => {
+            workerA.Enqueue(() => {
+                watchA.Start();
                 Thread.Sleep(100);
                 watchA.Stop();
-            }, refA);
-
+            }, refA, -1, 0);
+            workerA.Start();
             workerA.Wait();
+
             Assert.Multiple(() => {
                 Assert.That(watchA.ElapsedMilliseconds, Is.GreaterThanOrEqualTo(100));
                 Assert.That(metadataA.State, Is.EqualTo(TaskState.Completed), "Failed to finish the task.");
@@ -137,12 +141,14 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
                 Assert.That(refA.Ref.State, Is.EqualTo(TaskState.NotStarted));
             });
 
-            watchA.Restart();
             _ = workerA.Reset();
-            workerA.Start(() => {
+
+            workerA.Enqueue(() => {
+                watchA.Restart();
                 Thread.Sleep(100);
                 watchA.Stop();
-            }, refA);
+            }, refA, -1, 0);
+            workerA.Start();
             workerA.Wait();
 
             Assert.Multiple(() => {
@@ -160,9 +166,11 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
                     refA.Ref.State = state;
 
                     var exception = Assert.Throws<InvalidOperationException>(() => {
-                        workerA.Start(static () => {
+                        workerA.Enqueue(static () => {
                             Thread.Sleep(100);
-                        }, refA);
+                        }, refA, -1, 0);
+                        workerA.Start();
+                        workerA.Wait();
                     });
 
                     Assert.That(exception, Is.Not.Null, "Exception was not thrown!");

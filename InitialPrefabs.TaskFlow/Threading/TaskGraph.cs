@@ -74,8 +74,6 @@ namespace InitialPrefabs.TaskFlow.Threading {
         internal DynamicArray<NodeMetadata> NodeMetadata;
         internal DynamicArray<ITaskFor> TaskReferences;
 
-        [Obsolete]
-        internal DynamicArray<INode<ushort>> Nodes;
         // TODO: Change this to hold the index into NodeMetadata, TaskReferences, and TaskMetadata
         internal DynamicArray<(ITaskFor task, NodeMetadata node, UnmanagedRef<TaskMetadata> metadata)> Sorted;
         internal DynamicArray<TaskMetadata> TaskMetadata; // TODO: Sort the metadata also?
@@ -94,7 +92,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
             NodeMetadata = new DynamicArray<NodeMetadata>(capacity);
             TaskReferences = new DynamicArray<ITaskFor>(capacity);
 
-            Nodes = new DynamicArray<INode<ushort>>(capacity);
+            // Nodes = new DynamicArray<INode<ushort>>(capacity);
             Sorted = new DynamicArray<(ITaskFor, NodeMetadata, UnmanagedRef<TaskMetadata>)>(capacity);
             TaskMetadata = new DynamicArray<TaskMetadata>(capacity);
 
@@ -110,10 +108,10 @@ namespace InitialPrefabs.TaskFlow.Threading {
 
         public void Reset() {
             // TODO: Register a delegate that frees every node
-            for (var i = 0; i < Nodes.Count; i++) {
-                var node = Nodes[i];
-                node.Dispose();
-            }
+            // for (var i = 0; i < Nodes.Count; i++) {
+            //     var node = Nodes[i];
+            //     node.Dispose();
+            // }
 
             // Reset all metadata
             for (var i = 0; i < TaskMetadata.Collection.Length; i++) {
@@ -124,7 +122,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
             NodeMetadata.Clear();
             TaskReferences.Clear();
             TaskMetadata.Clear();
-            Nodes.Clear();
+            // Nodes.Clear();
             Sorted.Clear();
 
             Bytes = default;
@@ -142,27 +140,13 @@ namespace InitialPrefabs.TaskFlow.Threading {
             var bitArray = new NoAllocBitArray(span);
             var nodeMetadata = trackedTask.Metadata;
             if (!bitArray[nodeMetadata.GlobalID]) {
-                // TODO: What the fuck am I doing here? I can just reset the counter and increment
-                // The structs will be copied anyways...why am I trying to recycle this?
-                if (NodeMetadata.Count >= TaskMetadata.Capacity) {
-                    // We need to add a default metadata
-                    var metadata = Threading.TaskMetadata.Default();
-                    metadata.Workload = workload;
-                    TaskMetadata.Add(metadata);
-                } else {
-                    TaskMetadata.count++;
-                    ref var metadata = ref TaskMetadata.ElementAt(NodeMetadata.Count);
-                    // Reset the task
-                    metadata.Reset();
-                    metadata.Workload = workload;
-                }
-
+                TaskMetadata.Add(new TaskMetadata(workload));
                 // When we track a task, the associated metadata must also be enabled
                 bitArray[nodeMetadata.GlobalID] = true;
                 NodeMetadata.Add(trackedTask.Metadata);
                 TaskReferences.Add(trackedTask.Task);
                 // FIXME: Track the task and node metadata instead
-                Nodes.Add(trackedTask);
+                // Nodes.Add(trackedTask);
             }
         }
 
@@ -276,58 +260,44 @@ namespace InitialPrefabs.TaskFlow.Threading {
                         case WorkloadType.Fake:
                             break;
                         case WorkloadType.SingleThreadNoLoop: {
-                                // void action() {
-                                //     task.Execute(-1);
-                                // }
-                                // var (handle, worker) = WorkerBuffer.Rent();
-                                // (var wrapper, var idx) = TaskWrapperBuffer.Rent();
-                                // wrapper.Offset = 0;
-                                // wrapper.Length = 0;
-                                // wrapper.Task = element.node.Task;
-                                // worker.Start(wrapper.ExecuteNoLoop, element.metadata, idx);
-                                // WorkerRefs.Add(worker);
-                                // Handles.Add((handle, element.metadata));
+                                var (workerHandle, worker) = WorkerBuffer.Rent();
+                                (var ctx, var ctxHandle) = TaskWrapperBuffer.Rent(
+                                    task,
+                                    0,
+                                    metadata.Workload.Length);
+                                worker.Enqueue(ctx.ExecuteNoLoop, metadataPtr,
+                                    -1, ctxHandle);
+                                WorkerRefs.Add(worker);
+                                Handles.Add((workerHandle, metadataPtr));
                                 break;
                             }
                         case WorkloadType.SingleThreadLoop: {
-                                // void action() {
-                                //     for (var i = 0; i < metadata.Workload.Length; i++) {
-                                //         task.Execute(i);
-                                //     }
-                                // }
-
-                                // (var wrapper, var idx) = TaskWrapperBuffer.Rent();
-                                // wrapper.Task = element.node.Task;
-                                // wrapper.Offset = 0;
-                                // wrapper.Length = metadata.Workload.Length;
-                                // var (handle, worker) = WorkerBuffer.Rent();
-                                // worker.Start(wrapper.ExecuteLoop, element.metadata, idx);
-                                // WorkerRefs.Add(worker);
-                                // Handles.Add((handle, element.metadata));
+                                var (handle, worker) = WorkerBuffer.Rent();
+                                (var ctx, var ctxHandle) = TaskWrapperBuffer.Rent(
+                                    task,
+                                    0,
+                                    metadata.Workload.Length);
+                                worker.Enqueue(ctx.ExecuteLoop, metadataPtr,
+                                    -1, ctxHandle);
+                                WorkerRefs.Add(worker);
+                                Handles.Add((handle, metadataPtr));
                                 break;
                             }
                         case WorkloadType.MultiThreadLoop: {
-                                for (var t = 0; t < metadata.Workload.ThreadCount; t++) {
-                                    var start = t * metadata.Workload.BatchSize;
-                                    var diff = metadata.Workload.Total - start;
-                                    var length = diff > metadata.Workload.BatchSize ?
-                                        metadata.Workload.BatchSize : diff;
-                                    (var wrapper, var idx) = TaskWrapperBuffer.Rent();
-                                    wrapper.Task = task;
-                                    wrapper.Offset = start;
-                                    wrapper.Length = length;
-                                    // void action() {
-                                    //     for (var m = 0; m < length; m++) {
-                                    //         var offset = m + start;
-                                    //         task.Execute(offset);
-                                    //     }
-                                    // }
-
+                                ref var workload = ref metadata.Workload;
+                                for (var threadIdx = 0; threadIdx < workload.ThreadCount; threadIdx++) {
+                                    var start = threadIdx * workload.BatchSize;
+                                    var diff = workload.Total - start;
+                                    var length = diff > workload.BatchSize ?
+                                        workload.BatchSize : diff;
+                                    var (ctx, ctxHandle) = TaskWrapperBuffer
+                                        .Rent(task, start, length);
                                     var (handle, worker) = WorkerBuffer.Rent();
-                                    // TODO: Because we share the same state for all threads with the same metadata, and we create
-                                    // another thread that does not start until later, the previous thread will set the Metadata to Completed.
-                                    // This causes a queued thread for the same task to be dead.
-                                    worker.Start(wrapper.ExecuteLoop, metadataPtr, t, idx);
+                                    worker.Enqueue(
+                                        ctx.ExecuteLoop,
+                                        metadataPtr,
+                                        threadIdx,
+                                        ctxHandle);
                                     WorkerRefs.Add(worker);
                                     Handles.Add((handle, metadataPtr));
                                 }
@@ -339,6 +309,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
                 }
 
                 var workers = WorkerRefs.AsReadOnlySpan();
+                TaskWorker.StartAll(workers);
                 TaskWorker.WaitAll(workers);
                 for (var x = 0; x < WorkerRefs.Count; x++) {
                     var handle = Handles[x];

@@ -1,6 +1,7 @@
 ﻿using InitialPrefabs.TaskFlow.Collections;
 using InitialPrefabs.TaskFlow.Utils;
 using System;
+using System.Runtime.CompilerServices;
 using System.Threading;
 
 namespace InitialPrefabs.TaskFlow.Threading {
@@ -27,182 +28,93 @@ namespace InitialPrefabs.TaskFlow.Threading {
 
         // TODO: Turn this into a class and pool it them, because we need to avoid boxing and reuse
         // payloads each frame.
-        private struct Payload {
+        internal sealed class State {
             public UnmanagedRef<TaskMetadata> TaskMetadata;
             public Action TaskAction;
             public Action OnComplete;
-            public int Index;
-            public ushort WrapperIndex;
-        };
+            public int ThreadIndex;
+            public ushort TaskContextHandle;
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void Bind(
+                UnmanagedRef<TaskMetadata> metadata,
+                Action taskAction,
+                Action onComplete,
+                int threadIdx,
+                ushort ctxHandle) {
+
+                TaskMetadata = metadata;
+                TaskAction = taskAction;
+                OnComplete = onComplete;
+                ThreadIndex = threadIdx;
+                TaskContextHandle = ctxHandle;
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void Unbind() {
+                TaskAction = null;
+                TaskMetadata = default;
+                OnComplete = null;
+                ThreadIndex = -1;
+                TaskContextHandle = 0;
+            }
+        }
 
         internal readonly ManualResetEvent WaitHandle;
+        internal readonly State Payload;
 
         public TaskWorker() {
             WaitHandle = new ManualResetEvent(false);
+            Payload = new State();
         }
 
-        private static void OnTask(object state) {
-            var payload = (Payload)state;
+        private static void Execute(object state) {
+            var payload = (State)state;
             ref var m = ref payload.TaskMetadata.Ref;
             try {
-                payload.TaskAction();
+                payload.TaskAction.Invoke();
             } catch (Exception err) {
                 LogUtils.Emit(err);
                 m.State = TaskState.Faulted;
                 m.Token.Cancel();
             } finally {
                 payload.OnComplete();
-                // Console.WriteLine($"Returning in single or no loop {payload.WrapperIndex}");
-                TaskWrapperBuffer.Return(payload.WrapperIndex);
+                TaskWrapperBuffer.Return(payload.TaskContextHandle);
                 if (m.State != TaskState.Faulted) {
                     m.State = TaskState.Completed;
-                }
-            }
-        }
 
-        public void Start(Action action, UnmanagedRef<TaskMetadata> metadata, ushort wrapperIdx) {
-            ref var m = ref metadata.Ref;
-
-            if (m.State != TaskState.NotStarted) {
-                throw new InvalidOperationException(
-                    "Cannot reuse the same RewindableUnitTask because the " +
-                    "associated metadata indicates a thread is inflight.");
-            }
-
-            // When we start a new Unit Task, we have to go through the try catch finally block
-            // to safely execute each thread
-            _ = ThreadPool.UnsafeQueueUserWorkItem(static state => {
-                var payload = (Payload)state;
-                ref var m = ref payload.TaskMetadata.Ref;
-                try {
-                    payload.TaskAction();
-                } catch (Exception err) {
-                    LogUtils.Emit(err);
-                    m.State = TaskState.Faulted;
-                    m.Token.Cancel();
-                } finally {
-                    payload.OnComplete();
-                    // Console.WriteLine($"Returning in single or no loop {payload.WrapperIndex}");
-                    TaskWrapperBuffer.Return(payload.WrapperIndex);
-                    if (m.State != TaskState.Faulted) {
-                        m.State = TaskState.Completed;
+                    // For multiple threads and loops, we need to put the completion flag.
+                    if (payload.ThreadIndex != -1) {
+                        _ = Interlocked.Exchange(
+                            ref payload.TaskMetadata.Ref.CompletionFlags,
+                            1 << payload.ThreadIndex);
                     }
                 }
-            }, new Payload {
-                OnComplete = Complete,
-                TaskAction = action,
-                TaskMetadata = metadata,
-                WrapperIndex = wrapperIdx,
-            });
+            }
         }
 
-        public void Start(Action action, UnmanagedRef<TaskMetadata> metadata, int index, ushort wrapperIdx) {
-            ref var m = ref metadata.Ref;
+        public void Enqueue(
+            Action action,
+            UnmanagedRef<TaskMetadata> metadata,
+            int threadIndex,
+            ushort ctxHandle) {
+            Payload.Bind(
+                metadata,
+                action,
+                Complete,
+                threadIndex,
+                ctxHandle);
+        }
 
+        public void Start() {
+            ref var m = ref Payload.TaskMetadata.Ref;
             if (m.State != TaskState.NotStarted && m.Workload.Type != WorkloadType.MultiThreadLoop) {
                 throw new InvalidOperationException(
                     "Cannot reuse the same RewindableUnitTask because the " +
                     "associated metadata indicates a thread is inflight.");
             }
-            _ = ThreadPool.UnsafeQueueUserWorkItem(OnTask, new Payload {
-                Index = index,
-                OnComplete = Complete,
-                TaskAction = action,
-                TaskMetadata = metadata,
-                WrapperIndex = wrapperIdx
-            });
-
-            // When we start a new Unit Task, we have to go through the try catch finally block
-            // to safely execute each thread
-            // _ = ThreadPool.UnsafeQueueUserWorkItem(static state => {
-            //     var payload = (Payload)state;
-            //     ref var m = ref payload.TaskMetadata.Ref;
-            //     try {
-            //         payload.TaskAction.Invoke();
-            //     } catch (Exception err) {
-            //         LogUtils.Emit(err);
-            //         m.State = TaskState.Faulted;
-            //         m.Token.Cancel();
-            //     } finally {
-            //         payload.OnComplete();
-            //         // Console.WriteLine($"Returning in loop {payload.WrapperIndex}");
-            //         TaskWrapperBuffer.Return(payload.WrapperIndex);
-            //         _ = Interlocked.Exchange(ref m.CompletionFlags, 1 << payload.Index);
-            //     }
-            // }, new Payload {
-            //     Index = index,
-            //     OnComplete = Complete,
-            //     TaskAction = action,
-            //     TaskMetadata = metadata,
-            //     WrapperIndex = wrapperIdx
-            // });
+            _ = ThreadPool.UnsafeQueueUserWorkItem(Execute, Payload);
         }
-
-        public void Start(Action action, UnmanagedRef<TaskMetadata> metadata) {
-            ref var m = ref metadata.Ref;
-
-            if (m.State != TaskState.NotStarted) {
-                throw new InvalidOperationException(
-                    "Cannot reuse the same RewindableUnitTask because the " +
-                    "associated metadata indicates a thread is inflight.");
-            }
-
-            // When we start a new Unit Task, we have to go through the try catch finally block
-            // to safely execute each thread
-            _ = ThreadPool.UnsafeQueueUserWorkItem(static state => {
-                var payload = (Payload)state;
-                ref var m = ref payload.TaskMetadata.Ref;
-                try {
-                    payload.TaskAction();
-                } catch (Exception err) {
-                    LogUtils.Emit(err);
-                    m.State = TaskState.Faulted;
-                    m.Token.Cancel();
-                } finally {
-                    payload.OnComplete();
-                    if (m.State != TaskState.Faulted) {
-                        m.State = TaskState.Completed;
-                    }
-                }
-            }, new Payload {
-                OnComplete = Complete,
-                TaskAction = action,
-                TaskMetadata = metadata
-            });
-        }
-
-        public void Start(Action action, UnmanagedRef<TaskMetadata> metadata, int index) {
-            ref var m = ref metadata.Ref;
-
-            if (m.State != TaskState.NotStarted && m.Workload.Type != WorkloadType.MultiThreadLoop) {
-                throw new InvalidOperationException(
-                    "Cannot reuse the same RewindableUnitTask because the " +
-                    "associated metadata indicates a thread is inflight.");
-            }
-
-            // When we start a new Unit Task, we have to go through the try catch finally block
-            // to safely execute each thread
-            _ = ThreadPool.UnsafeQueueUserWorkItem(static state => {
-                var payload = (Payload)state;
-                ref var m = ref payload.TaskMetadata.Ref;
-                try {
-                    payload.TaskAction.Invoke();
-                } catch (Exception err) {
-                    LogUtils.Emit(err);
-                    m.State = TaskState.Faulted;
-                    m.Token.Cancel();
-                } finally {
-                    payload.OnComplete();
-                    _ = Interlocked.Exchange(ref m.CompletionFlags, 1 << payload.Index);
-                }
-            }, new Payload {
-                Index = index,
-                OnComplete = Complete,
-                TaskAction = action,
-                TaskMetadata = metadata
-            });
-        }
-
 
         public void Wait() {
             _ = WaitHandle.WaitOne();
@@ -218,6 +130,12 @@ namespace InitialPrefabs.TaskFlow.Threading {
 
         public void Dispose() {
             WaitHandle.Dispose();
+        }
+
+        public static void StartAll(ReadOnlySpan<TaskWorker> tasks) {
+            foreach (var task in tasks) {
+                task.Start();
+            }
         }
 
         public static void WaitAll(Span<TaskWorker> tasks) {

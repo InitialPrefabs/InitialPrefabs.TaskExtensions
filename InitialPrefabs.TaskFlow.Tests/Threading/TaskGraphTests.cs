@@ -35,11 +35,12 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
         }
 
         private struct T : ITaskFor {
-            public int[] A;
-            public int[] B;
+            public int[] Dst;
+            public int[] Source;
 
             public readonly void Execute(int index) {
-                A[index] = B[index] + 1;
+                Dst[index] = Source[index] + 1;
+                Console.WriteLine(Dst[index]);
             }
         }
 
@@ -78,8 +79,10 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
             Assert.Multiple(() => {
                 Assert.That(graph.Sorted, Has.Count.EqualTo(0),
                         "Sorted elemens were not resetted");
-                Assert.That(graph.Nodes, Has.Count.EqualTo(0),
-                        "Tracked Nodes were not resetted");
+                Assert.That(graph.NodeMetadata, Has.Count.EqualTo(0),
+                        "Tracked NodeMetadata were not resetted");
+                Assert.That(graph.TaskReferences, Has.Count.EqualTo(0),
+                        "Tracked TaskReferences were not resetted");
 
                 var bitArray = new NoAllocBitArray(graph.Bytes.AsSpan());
                 foreach (var element in bitArray) {
@@ -97,14 +100,16 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
         public void TrackingTaskHandle() {
             graph.Reset();
             Assert.Multiple(() => {
-                Assert.That(graph.Nodes, Has.Count.EqualTo(0));
+                Assert.That(graph.NodeMetadata, Has.Count.EqualTo(0));
                 Assert.That(graph.TaskMetadata, Has.Count.EqualTo(0));
+                Assert.That(graph.TaskReferences, Has.Count.EqualTo(0));
             });
 
             var handleA = new S { }.ScheduleParallel(128, 32);
 
             Assert.Multiple(() => {
-                Assert.That(graph.Nodes, Has.Count.EqualTo(1));
+                Assert.That(graph.TaskReferences, Has.Count.EqualTo(1));
+                Assert.That(graph.NodeMetadata, Has.Count.EqualTo(1));
                 Assert.That(graph.TaskMetadata, Has.Count.EqualTo(1));
                 var metadata = graph.TaskMetadata[0];
 
@@ -224,22 +229,22 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
             graph.Process();
 
             Assert.That(value.Value, Is.EqualTo(6),
-                "The value should have been incremented.");
+                "The value should have been incremented 6 times");
         }
 
         [Test]
         public void ParallelForTest() {
-            var a = new int[8];
+            var dst = new int[8];
             var b = new int[] { 1, 2, 3, 4, 5, 6, 7, 8 };
             var handleA = new T {
-                A = a,
-                B = b
-            }.ScheduleParallel(a.Length, 4);
+                Dst = dst,
+                Source = b
+            }.ScheduleParallel(dst.Length, 4);
 
             var _ = new U {
-                A = a,
+                A = dst,
                 B = b
-            }.ScheduleParallel(a.Length, 4, handleA);
+            }.ScheduleParallel(dst.Length, 4, handleA);
 
             // 1, 2, 3, 4,  5,  6, 7, 8
             // 2, 3, 4, 5,  6,  7, 8, 9
@@ -250,7 +255,7 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
             graph.Process();
 
             for (var i = 0; i < c.Length; i++) {
-                Assert.That(a[i], Is.EqualTo(c[i]),
+                Assert.That(dst[i], Is.EqualTo(c[i]),
                     $"Failed to parallel add at index: {i}");
             }
         }
@@ -272,10 +277,12 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
             }.ScheduleParallel(8, 4, handleA);
 
             graph.Sort();
+            Assert.That(graph.Sorted, Has.Count.EqualTo(2));
             graph.Process();
 
             for (var i = 0; i < 8; i++) {
-                Assert.That(a[i], Is.EqualTo(i * 2));
+                Assert.That(a[i], Is.EqualTo(i * 2),
+                    $"Failed at index: {i}");
             }
         }
 

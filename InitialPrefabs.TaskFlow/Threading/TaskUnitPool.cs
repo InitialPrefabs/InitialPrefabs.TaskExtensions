@@ -27,6 +27,8 @@ namespace InitialPrefabs.TaskFlow.Threading {
                 FreeHandles.Add(i);
                 Tasks.Add(new T0());
             }
+
+            TaskGraphManager.OnReset += Reset;
         }
 
         /// <summary>

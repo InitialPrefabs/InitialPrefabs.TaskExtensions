@@ -4,6 +4,12 @@ using System.Collections.Generic;
 
 namespace InitialPrefabs.TaskFlow.Threading {
 
+    internal readonly struct NodeMetadataComparer : IComparer<NodeMetadata> {
+        public readonly int Compare(NodeMetadata x, NodeMetadata y) {
+            return x.GlobalID.CompareTo(y.GlobalID);
+        }
+    }
+
     public struct NodeMetadata {
         internal ushort LocalID;
         internal ushort GlobalID;
@@ -96,11 +102,15 @@ namespace InitialPrefabs.TaskFlow.Threading {
             where T0 : struct, ITaskFor
             where T1 : struct, ITaskFor {
 
-            var handleIdx = TaskGraphManager.Default.Nodes.IndexOf(handle,
-                new INodeComparer<ushort>());
+            // TODO: This performs 2 copies
+            var metadata = handle.Metadata;
+            var handleIdx = TaskGraphManager.Default.NodeMetadata.IndexOf(metadata,
+                new NodeMetadataComparer());
             if (handleIdx > -1) {
                 handle.Parents.Add(dependsOn.GlobalID);
-                TaskGraphManager.Default.Nodes[handleIdx] = handle;
+
+                // TODO: This performs the 2nd copy because we updated the structs...
+                TaskGraphManager.Default.NodeMetadata[handleIdx] = handle.Metadata;
             } else {
                 throw new InvalidOperationException($"TaskHandle {handle.GetType()} with " +
                     $"ID: {handle.GlobalID}, cannot track TaskHandle, {dependsOn.GetType()} " +
@@ -134,7 +144,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
                 Parents = dependencies
             };
 
-            TaskGraphManager.Default.Track<TaskHandle<T0>>(taskHandle, TaskWorkload.SingleUnit());
+            TaskGraphManager.Default.Track(taskHandle, TaskWorkload.SingleUnit());
             return taskHandle;
         }
 
@@ -164,12 +174,13 @@ namespace InitialPrefabs.TaskFlow.Threading {
                 parents.Add(dependsOn[i]);
             }
 
-            // TODO: Rent this
             var taskHandle = new TaskHandle<T0>(handle) {
                 Parents = parents
             };
 
-            TaskGraphManager.Default.Track<TaskHandle<T0>>(taskHandle, TaskWorkload.LoopedSingleUnit(length));
+            TaskGraphManager.Default.Track(
+                taskHandle,
+                TaskWorkload.LoopedSingleUnit(length));
             return taskHandle;
         }
 

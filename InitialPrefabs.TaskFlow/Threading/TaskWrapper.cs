@@ -4,7 +4,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
 
     internal static class TaskWrapperBuffer {
 
-        internal static readonly DynamicArray<TaskWrapper> TaskWrappers = new DynamicArray<TaskWrapper>(TaskConstants.MaxTasks);
+        internal static readonly DynamicArray<TaskContext> TaskWrappers = new DynamicArray<TaskContext>(TaskConstants.MaxTasks);
         internal static readonly DynamicArray<ushort> FreeList = new DynamicArray<ushort>(TaskConstants.MaxTasks);
         internal static readonly DynamicArray<ushort> UseList = new DynamicArray<ushort>(TaskConstants.MaxTasks);
 
@@ -14,17 +14,20 @@ namespace InitialPrefabs.TaskFlow.Threading {
             UseList.Clear();
 
             for (ushort i = 0; i < TaskConstants.MaxTasks; i++) {
-                TaskWrappers.Add(new TaskWrapper { });
+                TaskWrappers.Add(new TaskContext { });
                 FreeList.Add(i);
             }
         }
 
-        [System.Obsolete("Add parameters to the rent so I can just set the values")]
-        public static (TaskWrapper wrapper, ushort localIndex) Rent() {
+        public static (TaskContext wrapper, ushort localIndex) Rent(ITaskFor task, int offset, int length) {
             var free = FreeList[0];
             FreeList.RemoveAtSwapback(0);
             UseList.Add(free);
-            return (TaskWrappers.Collection[free], free);
+            var context = TaskWrappers.Collection[free];
+            context.Task = task;
+            context.Offset = offset;
+            context.Length = length;
+            return (context, free);
         }
 
         public static void Return(ushort localIndex) {
@@ -36,14 +39,14 @@ namespace InitialPrefabs.TaskFlow.Threading {
         }
     }
 
-    public class TaskWrapper {
+    public class TaskContext {
         public ITaskFor Task;
         public int Length;
         public int Offset;
 
         public void ExecuteLoop() {
-            for (var i = Offset; i < Length; i++) {
-                Task.Execute(i);
+            for (var i = 0; i < Length; i++) {
+                Task.Execute(i + Offset);
             }
         }
 

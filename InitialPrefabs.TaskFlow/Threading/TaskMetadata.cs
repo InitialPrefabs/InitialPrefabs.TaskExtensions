@@ -1,5 +1,6 @@
 ﻿using InitialPrefabs.TaskFlow.Collections;
 using System;
+using System.Runtime.InteropServices;
 
 namespace InitialPrefabs.TaskFlow.Threading {
 
@@ -11,14 +12,12 @@ namespace InitialPrefabs.TaskFlow.Threading {
         public FixedUInt16Array32 ExceptionReferences;
         public int CompletionFlags;
 
-        public static TaskMetadata Default() {
-            return new TaskMetadata {
-                Token = new AtomicCancellationToken(),
-                State = TaskState.NotStarted,
-                Workload = default,
-                ExceptionReferences = default,
-                CompletionFlags = default
-            };
+        public TaskMetadata(TaskWorkload workload) {
+            Token = new AtomicCancellationToken();
+            State = TaskState.NotStarted;
+            Workload = workload;
+            ExceptionReferences = default;
+            CompletionFlags = default;
         }
 
         public bool Equals(TaskMetadata other) {
@@ -33,6 +32,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
             metadata.Workload = new TaskWorkload();
             metadata.Token.Reset();
             metadata.ExceptionReferences.Clear();
+            metadata.CompletionFlags = 0;
         }
     }
 }

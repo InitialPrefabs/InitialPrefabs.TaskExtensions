@@ -58,7 +58,7 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
             Prepare(ref metadataA, out var refA);
             var sum = 0;
 
-            workerA.Enqueue(() => {
+            workerA.Bind(() => {
                 Thread.Sleep(100);
                 Console.WriteLine("Finished rewindable");
                 sum = 1 + 1;
@@ -78,7 +78,7 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
         [Test]
         public void WaitSingleRewindableTaskUnitWithException() {
             Prepare(ref metadataA, out var refA);
-            workerA.Enqueue(static () => {
+            workerA.Bind(static () => {
                 throw new InvalidOperationException("Forcing a fault");
             }, refA, -1, 0);
             workerA.Start();
@@ -96,12 +96,12 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
             watchA.Start();
             watchB.Start();
 
-            workerA.Enqueue(() => {
+            workerA.Bind(() => {
                 Thread.Sleep(100);
                 watchA.Stop();
             }, refA, -1, 0);
 
-            workerB.Enqueue(() => {
+            workerB.Bind(() => {
                 Thread.Sleep(200);
                 watchB.Stop();
             }, refB, -1, 0);
@@ -122,7 +122,7 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
         public void ReusingAWorker() {
             Prepare(ref metadataA, out var refA);
 
-            workerA.Enqueue(() => {
+            workerA.Bind(() => {
                 watchA.Start();
                 Thread.Sleep(100);
                 watchA.Stop();
@@ -143,7 +143,7 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
 
             _ = workerA.Reset();
 
-            workerA.Enqueue(() => {
+            workerA.Bind(() => {
                 watchA.Restart();
                 Thread.Sleep(100);
                 watchA.Stop();
@@ -166,7 +166,7 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
                     refA.Ref.State = state;
 
                     var exception = Assert.Throws<InvalidOperationException>(() => {
-                        workerA.Enqueue(static () => {
+                        workerA.Bind(static () => {
                             Thread.Sleep(100);
                         }, refA, -1, 0);
                         workerA.Start();

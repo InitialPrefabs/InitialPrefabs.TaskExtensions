@@ -1,57 +1,66 @@
 ﻿using InitialPrefabs.TaskFlow.Collections;
+using InitialPrefabs.TaskFlow.Utils;
+using System;
 
 namespace InitialPrefabs.TaskFlow.Threading {
 
-    internal static class TaskWrapperBuffer {
+    internal class ExecutionContext {
+        public ITaskFor Task;
+        public int Length;
+        public int Offset;
 
-        internal static readonly DynamicArray<TaskContext> TaskWrappers = new DynamicArray<TaskContext>(TaskConstants.MaxTasks);
-        internal static readonly DynamicArray<ushort> FreeList = new DynamicArray<ushort>(TaskConstants.MaxTasks);
-        internal static readonly DynamicArray<ushort> UseList = new DynamicArray<ushort>(TaskConstants.MaxTasks);
+        public readonly Action TaskHandler;
 
-        static TaskWrapperBuffer() {
-            TaskWrappers.Clear();
-            FreeList.Clear();
-            UseList.Clear();
+        public ExecutionContext() {
+            TaskHandler = () => {
+                for (var i = 0; i < Length; i++) {
+                    Task.Execute(i + Offset);
+                }
+            };
+        }
+    }
+
+    internal static class ExecutionContextBuffer {
+
+        internal static readonly DynamicArray<ExecutionContext> Contexts =
+            new DynamicArray<ExecutionContext>(TaskConstants.MaxTasks);
+        internal static readonly DynamicArray<ushort> FreeHandles =
+            new DynamicArray<ushort>(TaskConstants.MaxTasks);
+        internal static readonly DynamicArray<ushort> UseHandles =
+            new DynamicArray<ushort>(TaskConstants.MaxTasks);
+
+        static ExecutionContextBuffer() {
+            Contexts.Clear();
+            FreeHandles.Clear();
+            UseHandles.Clear();
 
             for (ushort i = 0; i < TaskConstants.MaxTasks; i++) {
-                TaskWrappers.Add(new TaskContext { });
-                FreeList.Add(i);
+                Contexts.Add(new ExecutionContext { });
+                FreeHandles.Add(i);
             }
         }
 
-        public static (TaskContext wrapper, ushort localIndex) Rent(ITaskFor task, int offset, int length) {
-            var free = FreeList[0];
-            FreeList.RemoveAtSwapback(0);
-            UseList.Add(free);
-            var context = TaskWrappers.Collection[free];
+        public static (ExecutionContext ctx, ushort localHandle) Rent(
+            ITaskFor task,
+            int offset,
+            int length) {
+
+            var free = FreeHandles[0];
+            FreeHandles.RemoveAtSwapback(0);
+            UseHandles.Add(free);
+            var context = Contexts.Collection[free];
             context.Task = task;
             context.Offset = offset;
             context.Length = length;
             return (context, free);
         }
 
-        public static void Return(ushort localIndex) {
-            var idx = UseList.Find(element => element == localIndex);
+        public static void Return(ushort localHandle) {
+            var idx = UseHandles.IndexOf(localHandle, default(UShortComparer));
             if (idx > -1) {
-                UseList.RemoveAtSwapback(idx);
-                FreeList.Add(localIndex);
+                UseHandles.RemoveAtSwapback(idx);
+                FreeHandles.Add(localHandle);
             }
-        }
-    }
-
-    public class TaskContext {
-        public ITaskFor Task;
-        public int Length;
-        public int Offset;
-
-        public void ExecuteLoop() {
-            for (var i = 0; i < Length; i++) {
-                Task.Execute(i + Offset);
-            }
-        }
-
-        public void ExecuteNoLoop() {
-            Task.Execute(-1);
         }
     }
 }

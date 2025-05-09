@@ -90,6 +90,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
             for (var i = 0; i < Workers.Length; i++) {
                 Workers[i].Dispose();
             }
+            GC.SuppressFinalize(this);
         }
     }
 }

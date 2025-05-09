@@ -26,14 +26,12 @@ namespace InitialPrefabs.TaskFlow.Threading {
     // worker on a thread.
     public sealed class TaskWorker : IDisposable {
 
-        // TODO: Turn this into a class and pool it them, because we need to avoid boxing and reuse
-        // payloads each frame.
-        internal sealed class State {
+        internal sealed class WorkerContext {
             public UnmanagedRef<TaskMetadata> TaskMetadata;
-            public Action TaskAction;
+            public Action OnRun;
             public Action OnComplete;
             public int ThreadIndex;
-            public ushort TaskContextHandle;
+            public ushort ExecutionCtxHandle;
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Bind(
@@ -44,76 +42,83 @@ namespace InitialPrefabs.TaskFlow.Threading {
                 ushort ctxHandle) {
 
                 TaskMetadata = metadata;
-                TaskAction = taskAction;
+                OnRun = taskAction;
                 OnComplete = onComplete;
                 ThreadIndex = threadIdx;
-                TaskContextHandle = ctxHandle;
+                ExecutionCtxHandle = ctxHandle;
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Unbind() {
-                TaskAction = null;
+                OnRun = null;
                 TaskMetadata = default;
                 OnComplete = null;
                 ThreadIndex = -1;
-                TaskContextHandle = 0;
+                ExecutionCtxHandle = 0;
             }
         }
 
-        internal readonly ManualResetEvent WaitHandle;
-        internal readonly State Payload;
+        private static readonly WaitCallback ExecuteHandler;
 
-        public TaskWorker() {
-            WaitHandle = new ManualResetEvent(false);
-            Payload = new State();
+        static TaskWorker() {
+            ExecuteHandler = Execute;
         }
 
         private static void Execute(object state) {
-            var payload = (State)state;
-            ref var m = ref payload.TaskMetadata.Ref;
+            var ctx = (WorkerContext)state;
+            ref var m = ref ctx.TaskMetadata.Ref;
             try {
-                payload.TaskAction.Invoke();
+                ctx.OnRun.Invoke();
             } catch (Exception err) {
                 LogUtils.Emit(err);
                 m.State = TaskState.Faulted;
                 m.Token.Cancel();
             } finally {
-                payload.OnComplete();
-                TaskWrapperBuffer.Return(payload.TaskContextHandle);
+                ctx.OnComplete();
                 if (m.State != TaskState.Faulted) {
                     m.State = TaskState.Completed;
 
                     // For multiple threads and loops, we need to put the completion flag.
-                    if (payload.ThreadIndex != -1) {
+                    if (ctx.ThreadIndex != -1) {
                         _ = Interlocked.Exchange(
-                            ref payload.TaskMetadata.Ref.CompletionFlags,
-                            1 << payload.ThreadIndex);
+                            ref ctx.TaskMetadata.Ref.CompletionFlags,
+                            1 << ctx.ThreadIndex);
                     }
                 }
             }
         }
 
-        public void Enqueue(
+        internal readonly ManualResetEvent WaitHandle;
+        internal readonly WorkerContext Context;
+        internal readonly Action CompleteHandler;
+
+        public TaskWorker() {
+            WaitHandle = new ManualResetEvent(false);
+            Context = new WorkerContext();
+            CompleteHandler = Complete;
+        }
+
+        public void Bind(
             Action action,
             UnmanagedRef<TaskMetadata> metadata,
             int threadIndex,
             ushort ctxHandle) {
-            Payload.Bind(
+            Context.Bind(
                 metadata,
                 action,
-                Complete,
+                CompleteHandler,
                 threadIndex,
                 ctxHandle);
         }
 
         public void Start() {
-            ref var m = ref Payload.TaskMetadata.Ref;
+            ref var m = ref Context.TaskMetadata.Ref;
             if (m.State != TaskState.NotStarted && m.Workload.Type != WorkloadType.MultiThreadLoop) {
                 throw new InvalidOperationException(
                     "Cannot reuse the same RewindableUnitTask because the " +
                     "associated metadata indicates a thread is inflight.");
             }
-            _ = ThreadPool.UnsafeQueueUserWorkItem(Execute, Payload);
+            _ = ThreadPool.UnsafeQueueUserWorkItem(ExecuteHandler, Context);
         }
 
         public void Wait() {
@@ -122,6 +127,8 @@ namespace InitialPrefabs.TaskFlow.Threading {
 
         public void Complete() {
             _ = WaitHandle.Set();
+            ExecutionContextBuffer.Return(Context.ExecutionCtxHandle);
+            Context.Unbind();
         }
 
         public bool Reset() {
@@ -133,19 +140,22 @@ namespace InitialPrefabs.TaskFlow.Threading {
         }
 
         public static void StartAll(ReadOnlySpan<TaskWorker> tasks) {
-            foreach (var task in tasks) {
+            for (var i = 0; i < tasks.Length; i++) {
+                var task = tasks[i];
                 task.Start();
             }
         }
 
         public static void WaitAll(Span<TaskWorker> tasks) {
-            foreach (var task in tasks) {
+            for (var i = 0; i < tasks.Length; i++) {
+                var task = tasks[i];
                 task.Wait();
             }
         }
 
         public static void WaitAll(ReadOnlySpan<TaskWorker> tasks) {
-            foreach (var task in tasks) {
+            for (var i = 0; i < tasks.Length; i++) {
+                var task = tasks[i];
                 task.Wait();
             }
         }

@@ -44,7 +44,7 @@ namespace InitialPrefabs.TaskFlow.Collections {
             }
         }
 
-        public IEnumerator<ushort> GetEnumerator() {
+        public Enumerator GetEnumerator() {
             fixed (byte* ptr = Data) {
                 return new Enumerator {
                     Ptr = (ushort*)ptr,
@@ -68,6 +68,10 @@ namespace InitialPrefabs.TaskFlow.Collections {
                 }
             }
             return true;
+        }
+
+        IEnumerator<ushort> IEnumerable<ushort>.GetEnumerator() {
+            return GetEnumerator();
         }
     };
 

@@ -107,12 +107,6 @@ namespace InitialPrefabs.TaskFlow.Threading {
         }
 
         public void Reset() {
-            // TODO: Register a delegate that frees every node
-            // for (var i = 0; i < Nodes.Count; i++) {
-            //     var node = Nodes[i];
-            //     node.Dispose();
-            // }
-
             // Reset all metadata
             for (var i = 0; i < TaskMetadata.Collection.Length; i++) {
                 ref var metadata = ref TaskMetadata.Collection[i];
@@ -261,11 +255,11 @@ namespace InitialPrefabs.TaskFlow.Threading {
                             break;
                         case WorkloadType.SingleThreadNoLoop: {
                                 var (workerHandle, worker) = WorkerBuffer.Rent();
-                                (var ctx, var ctxHandle) = TaskWrapperBuffer.Rent(
+                                (var ctx, var ctxHandle) = ExecutionContextBuffer.Rent(
                                     task,
                                     0,
-                                    metadata.Workload.Length);
-                                worker.Enqueue(ctx.ExecuteNoLoop, metadataPtr,
+                                    1);
+                                worker.Bind(ctx.TaskHandler, metadataPtr,
                                     -1, ctxHandle);
                                 WorkerRefs.Add(worker);
                                 Handles.Add((workerHandle, metadataPtr));
@@ -273,11 +267,11 @@ namespace InitialPrefabs.TaskFlow.Threading {
                             }
                         case WorkloadType.SingleThreadLoop: {
                                 var (handle, worker) = WorkerBuffer.Rent();
-                                (var ctx, var ctxHandle) = TaskWrapperBuffer.Rent(
+                                (var ctx, var ctxHandle) = ExecutionContextBuffer.Rent(
                                     task,
                                     0,
                                     metadata.Workload.Length);
-                                worker.Enqueue(ctx.ExecuteLoop, metadataPtr,
+                                worker.Bind(ctx.TaskHandler, metadataPtr,
                                     -1, ctxHandle);
                                 WorkerRefs.Add(worker);
                                 Handles.Add((handle, metadataPtr));
@@ -290,11 +284,11 @@ namespace InitialPrefabs.TaskFlow.Threading {
                                     var diff = workload.Total - start;
                                     var length = diff > workload.BatchSize ?
                                         workload.BatchSize : diff;
-                                    var (ctx, ctxHandle) = TaskWrapperBuffer
+                                    var (ctx, ctxHandle) = ExecutionContextBuffer
                                         .Rent(task, start, length);
                                     var (handle, worker) = WorkerBuffer.Rent();
-                                    worker.Enqueue(
-                                        ctx.ExecuteLoop,
+                                    worker.Bind(
+                                        ctx.TaskHandler,
                                         metadataPtr,
                                         threadIdx,
                                         ctxHandle);
@@ -312,17 +306,15 @@ namespace InitialPrefabs.TaskFlow.Threading {
                 TaskWorker.StartAll(workers);
                 TaskWorker.WaitAll(workers);
                 for (var x = 0; x < WorkerRefs.Count; x++) {
-                    var handle = Handles[x];
-                    var worker = WorkerRefs[x];
+                    var (workerHandle, metadata) = Handles[x];
 
-                    var metadata = handle.metadata.Ref;
-                    if (metadata.State == TaskState.Faulted) {
+                    if (metadata.Ref.State == TaskState.Faulted) {
                         // TODO: Add a log handler
                         return;
                     }
 
                     // Return the worker
-                    WorkerBuffer.Return((handle.workerHandle, worker));
+                    WorkerBuffer.Return((workerHandle, WorkerRefs[x]));
                 }
                 WorkerRefs.Clear();
                 Handles.Clear();

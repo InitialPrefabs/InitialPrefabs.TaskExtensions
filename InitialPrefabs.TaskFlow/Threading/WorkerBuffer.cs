@@ -86,6 +86,19 @@ namespace InitialPrefabs.TaskFlow.Threading {
             UseCounter = (ushort)use.Count;
         }
 
+        public void ReturnAll() {
+            var free = new NoAllocList<WorkerHandle>(Free.AsSpan(), FreeCounter);
+            var useHandles = new NoAllocList<WorkerHandle>(Used.AsSpan(), UseCounter);
+            foreach (var handle in useHandles) {
+                var worker = Workers[handle];
+                worker.Reset();
+                free.Add(handle);
+            }
+            FreeCounter = (ushort)free.Count;
+            useHandles.Clear();
+            UseCounter = 0;
+        }
+
         public void Dispose() {
             for (var i = 0; i < Workers.Length; i++) {
                 Workers[i].Dispose();

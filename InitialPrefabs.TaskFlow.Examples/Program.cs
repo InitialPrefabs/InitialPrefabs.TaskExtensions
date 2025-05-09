@@ -1,5 +1,6 @@
 ﻿using InitialPrefabs.TaskFlow.Threading;
 using InitialPrefabs.TaskFlow.Utils;
+using System;
 
 namespace InitialPrefabs.TaskFlow.Examples {
 
@@ -15,31 +16,38 @@ namespace InitialPrefabs.TaskFlow.Examples {
         public int[] A;
 
         public readonly void Execute(int index) {
-            A[index] += index;
+            A[index] += 1;
         }
     }
 
-
     public class Program {
         public static void Main(string[] argv) {
+            Profiler.AppInfo("Sample App");
             _ = TaskGraphManager.Initialize();
-            // LogUtils.OnLog += System.Console.WriteLine;
+            LogUtils.OnLog += System.Console.WriteLine;
             var source = new int[100];
 
             for (var i = 0; i < 10000; i++) {
+                Console.WriteLine($"Iteration: {i}");
                 using (Profiler.BeginZone("Frame")) {
                     TaskGraphManager.ResetContext();
-                    var handle = new AddTask {
+
+                    var handle = new ResetTask {
                         A = source
                     }.ScheduleParallel(100, 20);
 
-                    _ = new ResetTask {
+                    _ = new AddTask {
                         A = source
                     }.ScheduleParallel(100, 20, handle);
 
                     using (Profiler.BeginZone("TaskGraph Process")) {
                         TaskGraphManager.Process();
                     }
+                    var sum = 0;
+                    foreach (var v in source) {
+                        sum += v;
+                    }
+                    Console.WriteLine($"Sum: {sum}");
                 }
 
                 Profiler.EmitFrameMark();

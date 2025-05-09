@@ -3,6 +3,7 @@ using InitialPrefabs.TaskFlow.Utils;
 using System;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace InitialPrefabs.TaskFlow.Threading {
 
@@ -27,54 +28,77 @@ namespace InitialPrefabs.TaskFlow.Threading {
     public sealed class TaskWorker : IDisposable {
 
         internal sealed class WorkerContext {
-            public UnmanagedRef<TaskMetadata> TaskMetadata;
-            public Action OnRun;
-            public Action OnComplete;
-            public int ThreadIndex;
-            public ushort ExecutionCtxHandle;
+            public UnmanagedRef<TaskMetadata> TaskMetadata { get; private set; }
+            private int Length;
+            private int Offset;
+            private ITaskFor task;
+
+            public readonly Action ExecutionHandler;
+            public readonly Action CompletionHandler;
+            public int ThreadIndex { get; private set; }
+
+            public override string ToString() {
+                return task != null ? task.GetType().ToString() : "Empty";
+            }
+
+            public WorkerContext() {
+                Length = 0;
+                Offset = 0;
+                task = null;
+
+                ExecutionHandler = () => {
+                    for (var i = 0; i < Length; i++) {
+                        task.Execute(i + Offset);
+                    }
+                };
+            }
+
+            public WorkerContext(Action completionHandler) : this() {
+                CompletionHandler = completionHandler;
+            }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void Bind(
-                UnmanagedRef<TaskMetadata> metadata,
-                Action taskAction,
-                Action onComplete,
-                int threadIdx,
-                ushort ctxHandle) {
-
-                TaskMetadata = metadata;
-                OnRun = taskAction;
-                OnComplete = onComplete;
-                ThreadIndex = threadIdx;
-                ExecutionCtxHandle = ctxHandle;
+            public void Bind(int offset, int length, ITaskFor task, UnmanagedRef<TaskMetadata> taskMetadata, int threadIdx = -1) {
+                Offset = offset;
+                Length = length;
+                this.task = task;
+                TaskMetadata = taskMetadata;
+                ThreadIndex = -1;
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Unbind() {
-                OnRun = null;
+                Offset = 0;
+                Length = 0;
+                task = null;
                 TaskMetadata = default;
-                OnComplete = null;
-                ThreadIndex = -1;
-                ExecutionCtxHandle = 0;
             }
+
+            public bool IsValid => Length > 0 && task != null && TaskMetadata.IsValid;
         }
 
-        private static readonly WaitCallback ExecuteHandler;
+        private static readonly WaitCallback WorkItemHandler;
 
         static TaskWorker() {
-            ExecuteHandler = Execute;
+            WorkItemHandler = Execute;
         }
 
         private static void Execute(object state) {
             var ctx = (WorkerContext)state;
+            if (!ctx.IsValid) {
+                Console.WriteLine("Screwed up");
+                throw new InvalidOperationException("Failed to execute the worker thread!");
+            }
+
             ref var m = ref ctx.TaskMetadata.Ref;
             try {
-                ctx.OnRun.Invoke();
+                ctx.ExecutionHandler.Invoke();
             } catch (Exception err) {
                 LogUtils.Emit(err);
                 m.State = TaskState.Faulted;
                 m.Token.Cancel();
             } finally {
-                ctx.OnComplete();
+                ctx.CompletionHandler();
                 if (m.State != TaskState.Faulted) {
                     m.State = TaskState.Completed;
 
@@ -90,26 +114,18 @@ namespace InitialPrefabs.TaskFlow.Threading {
 
         internal readonly ManualResetEvent WaitHandle;
         internal readonly WorkerContext Context;
-        internal readonly Action CompleteHandler;
 
         public TaskWorker() {
             WaitHandle = new ManualResetEvent(false);
-            Context = new WorkerContext();
-            CompleteHandler = Complete;
+            Context = new WorkerContext(Complete);
         }
 
-        public void Bind(
-            Action action,
-            UnmanagedRef<TaskMetadata> metadata,
-            int threadIndex,
-            ushort ctxHandle) {
+        public void Bind(ITaskFor task, UnmanagedRef<TaskMetadata> taskMetadata, int threadIdx = -1) {
+            Context.Bind(0, 1, task, taskMetadata, threadIdx);
+        }
 
-            Context.Bind(
-                metadata,
-                action,
-                CompleteHandler,
-                threadIndex,
-                ctxHandle);
+        public void Bind(int offset, int length, ITaskFor task, UnmanagedRef<TaskMetadata> taskMetadata, int threadIdx = -1) {
+            Context.Bind(offset, length, task, taskMetadata, threadIdx);
         }
 
         public void Start() {
@@ -119,7 +135,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
                     "Cannot reuse the same RewindableUnitTask because the " +
                     "associated metadata indicates a thread is inflight.");
             }
-            _ = ThreadPool.UnsafeQueueUserWorkItem(ExecuteHandler, Context);
+            _ = ThreadPool.UnsafeQueueUserWorkItem(WorkItemHandler, Context);
         }
 
         public void Wait() {
@@ -128,11 +144,10 @@ namespace InitialPrefabs.TaskFlow.Threading {
 
         public void Complete() {
             _ = WaitHandle.Set();
-            // ExecutionContextBuffer.Return(Context.ExecutionCtxHandle);
-            Context.Unbind();
         }
 
         public bool Reset() {
+            Context.Unbind();
             return WaitHandle.Reset();
         }
 

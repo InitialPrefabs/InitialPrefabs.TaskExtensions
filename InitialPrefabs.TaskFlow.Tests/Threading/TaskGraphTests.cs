@@ -183,22 +183,22 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
             var value = new RefInt();
             var handleA = new S {
                 RefInt = value,
-            }.Schedule();
+            }.Schedule(); // 1
             var handleB = new S {
                 RefInt = value,
-            }.Schedule(handleA);
+            }.Schedule(handleA); // 2
             var handleC = new S {
                 RefInt = value,
-            }.Schedule(handleA);
+            }.Schedule(handleA); // 3
             var handleD = new S {
                 RefInt = value,
-            }.Schedule(handleC);
+            }.Schedule(handleC); // 4
             var handleE = new S {
                 RefInt = value,
-            }.Schedule();
+            }.Schedule(); // 5
             var handleF = new S {
                 RefInt = value,
-            }.Schedule(handleB);
+            }.Schedule(handleB); // 6
 
             // The order should be
             // A E

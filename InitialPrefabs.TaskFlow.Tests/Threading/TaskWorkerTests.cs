@@ -53,16 +53,22 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
             refM = new UnmanagedRef<TaskMetadata>(ref m);
         }
 
+        struct SumTask : ITaskFor {
+            public UnmanagedRef<int> Sum;
+            public void Execute(int index) {
+                Sum.Ref = 1 + 1;
+            }
+        }
+
         [Test]
         public void WaitSingleRewindableTaskUnit() {
             Prepare(ref metadataA, out var refA);
             var sum = 0;
 
-            workerA.Bind(() => {
-                Thread.Sleep(100);
-                Console.WriteLine("Finished rewindable");
-                sum = 1 + 1;
-            }, refA, -1, 0);
+            workerA.Bind(new SumTask {
+                Sum = new UnmanagedRef<int>(ref sum)
+            }, refA);
+
             workerA.Start();
             workerA.Wait();
 
@@ -75,17 +81,31 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
             });
         }
 
+        struct ExceptionTask : ITaskFor {
+            public void Execute(int index) {
+                throw new InvalidOperationException("Forcing a fault");
+            }
+        }
+
         [Test]
         public void WaitSingleRewindableTaskUnitWithException() {
             Prepare(ref metadataA, out var refA);
-            workerA.Bind(static () => {
-                throw new InvalidOperationException("Forcing a fault");
-            }, refA, -1, 0);
+            workerA.Bind(new ExceptionTask(), refA);
             workerA.Start();
             workerA.Wait();
 
             Assert.That(metadataA.State, Is.EqualTo(TaskState.Faulted),
                 "The task should have faulted and earlied out");
+        }
+
+        struct SleepStopwatchTask : ITaskFor {
+            public Stopwatch Watch;
+            public int Time;
+            public void Execute(int index) {
+                Watch.Start();
+                Thread.Sleep(Time);
+                Watch.Stop();
+            }
         }
 
         [Test]
@@ -96,20 +116,11 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
             watchA.Start();
             watchB.Start();
 
-            workerA.Bind(() => {
-                Thread.Sleep(100);
-                watchA.Stop();
-            }, refA, -1, 0);
-
-            workerB.Bind(() => {
-                Thread.Sleep(200);
-                watchB.Stop();
-            }, refB, -1, 0);
-
-            workerA.Start();
-            workerB.Start();
+            workerA.Bind(new SleepStopwatchTask { Watch = watchA, Time = 100 }, refA);
+            workerB.Bind(new SleepStopwatchTask { Watch = watchB, Time = 200 }, refB);
 
             var array = new TaskWorker[] { workerA, workerB };
+            TaskWorker.StartAll(array);
             TaskWorker.WaitAll(array);
 
             Assert.Multiple(() => {
@@ -122,11 +133,7 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
         public void ReusingAWorker() {
             Prepare(ref metadataA, out var refA);
 
-            workerA.Bind(() => {
-                watchA.Start();
-                Thread.Sleep(100);
-                watchA.Stop();
-            }, refA, -1, 0);
+            workerA.Bind(new SleepStopwatchTask { Watch = watchA, Time = 100 }, refA);
             workerA.Start();
             workerA.Wait();
 
@@ -142,12 +149,7 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
             });
 
             _ = workerA.Reset();
-
-            workerA.Bind(() => {
-                watchA.Restart();
-                Thread.Sleep(100);
-                watchA.Stop();
-            }, refA, -1, 0);
+            workerA.Bind(new SleepStopwatchTask { Watch = watchA, Time = 100 }, refA);
             workerA.Start();
             workerA.Wait();
 
@@ -166,9 +168,7 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
                     refA.Ref.State = state;
 
                     var exception = Assert.Throws<InvalidOperationException>(() => {
-                        workerA.Bind(static () => {
-                            Thread.Sleep(100);
-                        }, refA, -1, 0);
+                        workerA.Bind(new SleepStopwatchTask { Watch = watchA, Time = 100 }, refA);
                         workerA.Start();
                         workerA.Wait();
                     });

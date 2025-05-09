@@ -255,27 +255,14 @@ namespace InitialPrefabs.TaskFlow.Threading {
                             break;
                         case WorkloadType.SingleThreadNoLoop: {
                                 var (workerHandle, worker) = WorkerBuffer.Rent();
-                                (var ctx, var ctxHandle) = ExecutionContextBuffer.Rent(
-                                    task,
-                                    0,
-                                    1);
-                                worker.Bind(
-                                    ctx.TaskHandler,
-                                    metadataPtr,
-                                    -1,
-                                    ctxHandle);
+                                worker.Bind(task, metadataPtr);
                                 WorkerRefs.Add(worker);
                                 Handles.Add((workerHandle, metadataPtr));
                                 break;
                             }
                         case WorkloadType.SingleThreadLoop: {
                                 var (handle, worker) = WorkerBuffer.Rent();
-                                (var ctx, var ctxHandle) = ExecutionContextBuffer.Rent(
-                                    task,
-                                    0,
-                                    metadata.Workload.Length);
-                                worker.Bind(ctx.TaskHandler, metadataPtr,
-                                    -1, ctxHandle);
+                                worker.Bind(0, metadata.Workload.Length, task, metadataPtr);
                                 WorkerRefs.Add(worker);
                                 Handles.Add((handle, metadataPtr));
                                 break;
@@ -287,14 +274,8 @@ namespace InitialPrefabs.TaskFlow.Threading {
                                     var diff = workload.Total - start;
                                     var length = diff > workload.BatchSize ?
                                         workload.BatchSize : diff;
-                                    var (ctx, ctxHandle) = ExecutionContextBuffer
-                                        .Rent(task, start, length);
                                     var (handle, worker) = WorkerBuffer.Rent();
-                                    worker.Bind(
-                                        ctx.TaskHandler,
-                                        metadataPtr,
-                                        threadIdx,
-                                        ctxHandle);
+                                    worker.Bind(start, length, task, metadataPtr, threadIdx);
                                     WorkerRefs.Add(worker);
                                     Handles.Add((handle, metadataPtr));
                                 }
@@ -308,18 +289,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
                 var workers = WorkerRefs.AsReadOnlySpan();
                 TaskWorker.StartAll(workers);
                 TaskWorker.WaitAll(workers);
-                for (var x = 0; x < WorkerRefs.Count; x++) {
-                    var (workerHandle, metadata) = Handles[x];
-
-                    if (metadata.Ref.State == TaskState.Faulted) {
-                        // TODO: Add a log handler
-                        return;
-                    }
-
-                    // Return the worker
-                    WorkerBuffer.Return((workerHandle, WorkerRefs[x]));
-                }
-                ExecutionContextBuffer.ReturnAll();
+                WorkerBuffer.ReturnAll();
                 WorkerRefs.Clear();
                 Handles.Clear();
             }

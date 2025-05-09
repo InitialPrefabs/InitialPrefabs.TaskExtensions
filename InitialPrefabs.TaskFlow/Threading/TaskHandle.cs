@@ -21,23 +21,8 @@ namespace InitialPrefabs.TaskFlow.Threading {
     }
 
     public interface INode<T> : IDisposable where T : unmanaged {
-        [Obsolete]
-        ushort LocalID { get; }
-        [Obsolete]
-        ushort GlobalID { get; }
         ITaskFor Task { get; }
-        [Obsolete]
-        ReadOnlySpan<T> GetDependencies();
-        [Obsolete]
-        bool IsEmpty();
-
         NodeMetadata Metadata { get; }
-    }
-
-    internal struct INodeComparer<T> : IComparer<INode<T>> where T : unmanaged {
-        public readonly int Compare(INode<T> x, INode<T> y) {
-            return x.GlobalID.CompareTo(y.GlobalID);
-        }
     }
 
     // TODO: Maybe this should be stored as a class and reused.

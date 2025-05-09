@@ -173,7 +173,7 @@ public static class Profiler {
     /// Creates a <seealso cref="CString"/> for use by Tracy. Also returns the
     /// length of the string for interop convenience.
     /// </summary>
-    public static CString GetCString(string? fromString, out ulong clength) {
+    public static CString GetCString(string fromString, out ulong clength) {
         if (fromString == null) {
             clength = 0;
             return new CString(0);

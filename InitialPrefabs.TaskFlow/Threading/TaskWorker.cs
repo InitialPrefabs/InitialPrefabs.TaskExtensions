@@ -3,7 +3,6 @@ using InitialPrefabs.TaskFlow.Utils;
 using System;
 using System.Runtime.CompilerServices;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace InitialPrefabs.TaskFlow.Threading {
 
@@ -31,7 +30,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
             public UnmanagedRef<TaskMetadata> TaskMetadata { get; private set; }
             private int Length;
             private int Offset;
-            private ITaskFor task;
+            private ITaskUnitRef task;
 
             public readonly Action ExecutionHandler;
             public readonly Action CompletionHandler;
@@ -48,7 +47,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
 
                 ExecutionHandler = () => {
                     for (var i = 0; i < Length; i++) {
-                        task.Execute(i + Offset);
+                        task.Handler(i + Offset);
                     }
                 };
             }
@@ -58,7 +57,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void Bind(int offset, int length, ITaskFor task, UnmanagedRef<TaskMetadata> taskMetadata, int threadIdx = -1) {
+            public void Bind(int offset, int length, ITaskUnitRef task, UnmanagedRef<TaskMetadata> taskMetadata, int threadIdx = -1) {
                 Offset = offset;
                 Length = length;
                 this.task = task;
@@ -85,10 +84,12 @@ namespace InitialPrefabs.TaskFlow.Threading {
 
         private static void Execute(object state) {
             var ctx = (WorkerContext)state;
+#if DEBUG
             if (!ctx.IsValid) {
                 Console.WriteLine("Screwed up");
                 throw new InvalidOperationException("Failed to execute the worker thread!");
             }
+#endif
 
             ref var m = ref ctx.TaskMetadata.Ref;
             try {
@@ -120,11 +121,11 @@ namespace InitialPrefabs.TaskFlow.Threading {
             Context = new WorkerContext(Complete);
         }
 
-        public void Bind(ITaskFor task, UnmanagedRef<TaskMetadata> taskMetadata, int threadIdx = -1) {
+        public void Bind(ITaskUnitRef task, UnmanagedRef<TaskMetadata> taskMetadata, int threadIdx = -1) {
             Context.Bind(0, 1, task, taskMetadata, threadIdx);
         }
 
-        public void Bind(int offset, int length, ITaskFor task, UnmanagedRef<TaskMetadata> taskMetadata, int threadIdx = -1) {
+        public void Bind(int offset, int length, ITaskUnitRef task, UnmanagedRef<TaskMetadata> taskMetadata, int threadIdx = -1) {
             Context.Bind(offset, length, task, taskMetadata, threadIdx);
         }
 

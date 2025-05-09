@@ -65,9 +65,9 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
             Prepare(ref metadataA, out var refA);
             var sum = 0;
 
-            workerA.Bind(new SumTask {
+            workerA.Bind(new TaskUnitRef<SumTask>(new SumTask {
                 Sum = new UnmanagedRef<int>(ref sum)
-            }, refA);
+            }), refA);
 
             workerA.Start();
             workerA.Wait();
@@ -90,7 +90,7 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
         [Test]
         public void WaitSingleRewindableTaskUnitWithException() {
             Prepare(ref metadataA, out var refA);
-            workerA.Bind(new ExceptionTask(), refA);
+            workerA.Bind(new TaskUnitRef<ExceptionTask>(new ExceptionTask()), refA);
             workerA.Start();
             workerA.Wait();
 
@@ -116,8 +116,12 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
             watchA.Start();
             watchB.Start();
 
-            workerA.Bind(new SleepStopwatchTask { Watch = watchA, Time = 100 }, refA);
-            workerB.Bind(new SleepStopwatchTask { Watch = watchB, Time = 200 }, refB);
+            workerA.Bind(new TaskUnitRef<SleepStopwatchTask>(new SleepStopwatchTask {
+                Watch = watchA, Time = 100
+            }), refA);
+            workerB.Bind(new TaskUnitRef<SleepStopwatchTask>(new SleepStopwatchTask {
+                Watch = watchB, Time = 200
+            }), refB);
 
             var array = new TaskWorker[] { workerA, workerB };
             TaskWorker.StartAll(array);
@@ -133,7 +137,9 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
         public void ReusingAWorker() {
             Prepare(ref metadataA, out var refA);
 
-            workerA.Bind(new SleepStopwatchTask { Watch = watchA, Time = 100 }, refA);
+            workerA.Bind(new TaskUnitRef<SleepStopwatchTask>(new SleepStopwatchTask {
+                Watch = watchA, Time = 100
+            }), refA);
             workerA.Start();
             workerA.Wait();
 
@@ -149,7 +155,9 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
             });
 
             _ = workerA.Reset();
-            workerA.Bind(new SleepStopwatchTask { Watch = watchA, Time = 100 }, refA);
+            workerA.Bind(new TaskUnitRef<SleepStopwatchTask>(new SleepStopwatchTask {
+                Watch = watchA, Time = 100
+            }), refA);
             workerA.Start();
             workerA.Wait();
 
@@ -168,7 +176,9 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
                     refA.Ref.State = state;
 
                     var exception = Assert.Throws<InvalidOperationException>(() => {
-                        workerA.Bind(new SleepStopwatchTask { Watch = watchA, Time = 100 }, refA);
+                        workerA.Bind(new TaskUnitRef<SleepStopwatchTask>(new SleepStopwatchTask {
+                            Watch = watchA, Time = 100
+                        }), refA);
                         workerA.Start();
                         workerA.Wait();
                     });

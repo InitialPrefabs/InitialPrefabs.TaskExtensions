@@ -21,7 +21,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
     }
 
     public interface INode<T> : IDisposable where T : unmanaged {
-        ITaskFor Task { get; }
+        ITaskUnitRef TaskRef { get; }
         NodeMetadata Metadata { get; }
     }
 
@@ -52,7 +52,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
         public readonly ushort GlobalID => GlobalHandle;
 
         // TODO: This allocates garbage, figure out how to reduce it
-        public readonly ITaskFor Task => TaskUnitPool<T0>.ElementAt(LocalHandle);
+        public readonly ITaskUnitRef TaskRef => TaskUnitPool<T0>.ElementAt(LocalHandle);
 
         /// <summary>
         /// Allows the TaskHandle to be returned back to its associated

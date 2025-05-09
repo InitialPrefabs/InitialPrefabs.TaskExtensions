@@ -72,10 +72,10 @@ namespace InitialPrefabs.TaskFlow.Threading {
 
         // Stores an ordered list of TaskHandles
         internal DynamicArray<NodeMetadata> NodeMetadata;
-        internal DynamicArray<ITaskFor> TaskReferences;
+        internal DynamicArray<ITaskUnitRef> TaskReferences;
 
         // TODO: Change this to hold the index into NodeMetadata, TaskReferences, and TaskMetadata
-        internal DynamicArray<(ITaskFor task, NodeMetadata node, UnmanagedRef<TaskMetadata> metadata)> Sorted;
+        internal DynamicArray<(ITaskUnitRef task, NodeMetadata node, UnmanagedRef<TaskMetadata> metadata)> Sorted;
         internal DynamicArray<TaskMetadata> TaskMetadata; // TODO: Sort the metadata also?
         internal _Bools Bytes;
         internal _Edges Edges;
@@ -90,10 +90,10 @@ namespace InitialPrefabs.TaskFlow.Threading {
         // TODO: Write an allocation strategy
         public TaskGraph(int capacity) {
             NodeMetadata = new DynamicArray<NodeMetadata>(capacity);
-            TaskReferences = new DynamicArray<ITaskFor>(capacity);
+            TaskReferences = new DynamicArray<ITaskUnitRef>(capacity);
 
             // Nodes = new DynamicArray<INode<ushort>>(capacity);
-            Sorted = new DynamicArray<(ITaskFor, NodeMetadata, UnmanagedRef<TaskMetadata>)>(capacity);
+            Sorted = new DynamicArray<(ITaskUnitRef, NodeMetadata, UnmanagedRef<TaskMetadata>)>(capacity);
             TaskMetadata = new DynamicArray<TaskMetadata>(capacity);
 
             for (var i = 0; i < capacity; i++) {
@@ -138,7 +138,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
                 // When we track a task, the associated metadata must also be enabled
                 bitArray[nodeMetadata.GlobalID] = true;
                 NodeMetadata.Add(trackedTask.Metadata);
-                TaskReferences.Add(trackedTask.Task);
+                TaskReferences.Add(trackedTask.TaskRef);
                 // FIXME: Track the task and node metadata instead
                 // Nodes.Add(trackedTask);
             }

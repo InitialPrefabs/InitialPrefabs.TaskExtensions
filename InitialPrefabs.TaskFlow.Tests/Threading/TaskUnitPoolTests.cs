@@ -93,7 +93,8 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
 
             foreach (var handle in handles) {
                 ref var task = ref TaskUnitPool<S>.ElementAt(handle);
-                Assert.That(task, Is.EqualTo(default(S)));
+                var t = (TaskUnitRef<S>)task;
+                Assert.That(t.Task, Is.EqualTo(default(S)));
             }
         }
     }

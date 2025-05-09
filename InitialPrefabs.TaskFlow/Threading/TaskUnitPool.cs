@@ -1,7 +1,31 @@
 ﻿using InitialPrefabs.TaskFlow.Collections;
+using System;
 using System.Runtime.CompilerServices;
 
 namespace InitialPrefabs.TaskFlow.Threading {
+
+    public interface ITaskUnitRef {
+        public Action<int> Handler { get; }
+    }
+
+    public class TaskUnitRef<T0> : ITaskUnitRef where T0 : struct, ITaskFor {
+        public T0 Task;
+
+        public Action<int> Handler { get; }
+
+        private TaskUnitRef() {
+            Task = default;
+            Handler = Execute;
+        }
+
+        public TaskUnitRef(T0 task) : this() {
+            this.Task = task;
+        }
+
+        private void Execute(int index) {
+            Task.Execute(index);
+        }
+    }
 
     /// <summary>
     /// Stores structs implement <see cref="ITaskFor"/> to avoid boxing on runtime.
@@ -10,7 +34,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
     /// </summary>
     public static class TaskUnitPool<T0> where T0 : struct, ITaskFor {
 
-        internal static readonly DynamicArray<T0> Tasks;
+        internal static readonly DynamicArray<TaskUnitRef<T0>> Tasks;
         internal static readonly DynamicArray<ushort> FreeHandles;
         internal static readonly DynamicArray<ushort> UsedHandles;
 
@@ -19,13 +43,13 @@ namespace InitialPrefabs.TaskFlow.Threading {
 
         static TaskUnitPool() {
             var capacity = 5;
-            Tasks = new DynamicArray<T0>(capacity);
+            Tasks = new DynamicArray<TaskUnitRef<T0>>(capacity);
             FreeHandles = new DynamicArray<ushort>(capacity);
             UsedHandles = new DynamicArray<ushort>(capacity);
 
             for (ushort i = 0; i < 5; i++) {
                 FreeHandles.Add(i);
-                Tasks.Add(new T0());
+                Tasks.Add(new TaskUnitRef<T0>(new T0()));
             }
 
             TaskGraphManager.OnReset += Reset;
@@ -40,14 +64,15 @@ namespace InitialPrefabs.TaskFlow.Threading {
             if (FreeHandles.IsEmpty) {
                 var freeHandle = (ushort)Tasks.Count;
                 UsedHandles.Add(freeHandle);
-                Tasks.Add(value);
+                Tasks.Add(new TaskUnitRef<T0>(value));
                 return new LocalHandle(freeHandle);
             } else {
                 var lastIndex = FreeHandles.Count - 1;
                 var freeHandle = FreeHandles[lastIndex];
                 UsedHandles.Add(freeHandle);
                 FreeHandles.RemoveAtSwapback(lastIndex);
-                Tasks[freeHandle] = value;
+                var unitRef = Tasks[freeHandle];
+                unitRef.Task = value;
                 return new LocalHandle(freeHandle);
             }
         }
@@ -57,13 +82,13 @@ namespace InitialPrefabs.TaskFlow.Threading {
             FreeHandles.Add(handle);
         }
 
-        public static ref T0 ElementAt(LocalHandle handle) {
+        public static ref TaskUnitRef<T0> ElementAt(LocalHandle handle) {
             return ref Tasks.Collection[handle];
         }
 
         public static void Reset() {
-            foreach (var element in UsedHandles) {
-                FreeHandles.Add(element);
+            for (var i = 0; i < UsedHandles.Count; i++) {
+                FreeHandles.Add(UsedHandles[i]);
             }
             UsedHandles.Clear();
         }

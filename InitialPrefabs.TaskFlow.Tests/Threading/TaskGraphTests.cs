@@ -150,8 +150,9 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
                 "Mismatched tracking.");
 
             for (var i = 0; i < order.Length; i++) {
+                var sortIdx = sorted[i];
                 Assert.That(
-                    sorted[i].node.GlobalID,
+                    graph.NodeMetadata[sortIdx].GlobalID,
                     Is.EqualTo(order[i]),
                     $"Failed at {i} with value: {order[i]}, mismatched order");
             }
@@ -221,7 +222,7 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
 
             for (var i = 0; i < order.Length; i++) {
                 Assert.That(
-                    sorted[i].node.GlobalID,
+                    graph.NodeMetadata[sorted[i]].GlobalID,
                     Is.EqualTo(order[i]),
                     $"Failed at {i} with value: {order[i]}, mismatched order");
             }

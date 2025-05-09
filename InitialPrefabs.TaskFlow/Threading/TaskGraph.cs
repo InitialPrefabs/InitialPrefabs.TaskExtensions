@@ -75,7 +75,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
         internal DynamicArray<ITaskUnitRef> TaskReferences;
 
         // TODO: Change this to hold the index into NodeMetadata, TaskReferences, and TaskMetadata
-        internal DynamicArray<(ITaskUnitRef task, NodeMetadata node, UnmanagedRef<TaskMetadata> metadata)> Sorted;
+        internal DynamicArray<ushort> Sorted;
         internal DynamicArray<TaskMetadata> TaskMetadata; // TODO: Sort the metadata also?
         internal _Bools Bytes;
         internal _Edges Edges;
@@ -93,7 +93,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
             TaskReferences = new DynamicArray<ITaskUnitRef>(capacity);
 
             // Nodes = new DynamicArray<INode<ushort>>(capacity);
-            Sorted = new DynamicArray<(ITaskUnitRef, NodeMetadata, UnmanagedRef<TaskMetadata>)>(capacity);
+            Sorted = new DynamicArray<ushort>(capacity);
             TaskMetadata = new DynamicArray<TaskMetadata>(capacity);
 
             for (var i = 0; i < capacity; i++) {
@@ -212,11 +212,12 @@ namespace InitialPrefabs.TaskFlow.Threading {
 
                 for (var i = 0; i < batchSize; i++) {
                     var taskIdx = queue.Dequeue();
+                    Sorted.Add(taskIdx);
                     // TODO: This honestly looks correct...?
-                    Sorted.Add((
-                        TaskReferences[taskIdx],
-                        NodeMetadata[taskIdx],
-                        new UnmanagedRef<TaskMetadata>(ref TaskMetadata.ElementAt(taskIdx))));
+                    // Sorted.Add((
+                    //     TaskReferences[taskIdx],
+                    //     NodeMetadata[taskIdx],
+                    //     new UnmanagedRef<TaskMetadata>(ref TaskMetadata.ElementAt(taskIdx))));
 
                     for (ushort x = 0; x < taskCount; x++) {
                         if (adjacencyMatrix[(taskIdx * TaskConstants.MaxTasks) + x] == 1) {
@@ -246,10 +247,13 @@ namespace InitialPrefabs.TaskFlow.Threading {
 
                 for (var x = 0; x < slice.Count; x++) {
                     var offset = x + slice.Start;
-                    (var task, var node, var metadataPtr) =
-                        Sorted[offset];
-                    var metadata = metadataPtr.Ref;
+                    // (var task, var node, var metadataPtr) =
+                    var sortIdx = Sorted[offset];
+                    var task = TaskReferences[sortIdx];
+                    var node = NodeMetadata[sortIdx];
+                    var metadataPtr = new UnmanagedRef<TaskMetadata>(ref TaskMetadata.Collection[sortIdx]);
 
+                    var metadata = metadataPtr.Ref;
                     switch (metadata.Workload.Type) {
                         case WorkloadType.Fake:
                             break;

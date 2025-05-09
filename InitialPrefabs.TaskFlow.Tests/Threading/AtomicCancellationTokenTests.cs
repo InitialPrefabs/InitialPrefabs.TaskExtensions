@@ -32,7 +32,7 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
             Assert.Multiple(() => {
                 Assert.That(isPreempted,
                     "Failed to exit early when ThreadA requested a cancellation on ThreadB");
-                Assert.That(atomic.IsCancellationRequested, "Cancellation should've been requested");
+                Assert.That(refToken.Ref.IsCancellationRequested, "Cancellation should've been requested");
             });
         }
 

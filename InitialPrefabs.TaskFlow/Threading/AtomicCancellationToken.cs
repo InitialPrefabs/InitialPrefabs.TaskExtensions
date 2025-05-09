@@ -8,7 +8,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
     public struct AtomicCancellationToken {
         private int state;
 
-        public bool IsCancellationRequested => state > 0;
+        public readonly bool IsCancellationRequested => state > 0;
 
         public void Cancel() {
             _ = Interlocked.Exchange(ref state, 1);

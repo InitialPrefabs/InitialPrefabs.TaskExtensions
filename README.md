@@ -13,7 +13,7 @@ scheduled to run **last**. This allows you to chain a bunch of Tasks together to
 The core features of this new system are in, the remaining work that needs to be done are:
 
 - [ ] Setting up configurations through a Builder struct
-- [ ] Reducing GC Pressure when scheduling Tasks each frame
+- [x] Reducing GC Pressure when scheduling Tasks each frame
 - [ ] Combining dependencies together
 
 Supports the following .NET versions:

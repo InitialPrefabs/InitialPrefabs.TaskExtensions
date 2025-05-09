@@ -107,6 +107,11 @@ namespace InitialPrefabs.TaskFlow.Collections {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void RemoveAtSwapbackAsync(int index) {
+            Collection[index] = Collection[Interlocked.Decrement(ref count)];
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void RemoveAt(int index) {
             count--;
             for (var i = index; i < count; i++) {

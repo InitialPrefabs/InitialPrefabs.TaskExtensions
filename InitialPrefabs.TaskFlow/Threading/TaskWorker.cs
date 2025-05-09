@@ -103,6 +103,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
             UnmanagedRef<TaskMetadata> metadata,
             int threadIndex,
             ushort ctxHandle) {
+
             Context.Bind(
                 metadata,
                 action,
@@ -127,7 +128,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
 
         public void Complete() {
             _ = WaitHandle.Set();
-            ExecutionContextBuffer.Return(Context.ExecutionCtxHandle);
+            // ExecutionContextBuffer.Return(Context.ExecutionCtxHandle);
             Context.Unbind();
         }
 

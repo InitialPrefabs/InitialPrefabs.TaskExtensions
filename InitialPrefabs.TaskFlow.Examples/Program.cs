@@ -1,4 +1,5 @@
 ﻿using InitialPrefabs.TaskFlow.Threading;
+using InitialPrefabs.TaskFlow.Utils;
 
 namespace InitialPrefabs.TaskFlow.Examples {
 
@@ -18,22 +19,30 @@ namespace InitialPrefabs.TaskFlow.Examples {
         }
     }
 
+
     public class Program {
         public static void Main(string[] argv) {
             _ = TaskGraphManager.Initialize();
+            // LogUtils.OnLog += System.Console.WriteLine;
             var source = new int[100];
 
             for (var i = 0; i < 10000; i++) {
-                TaskGraphManager.ResetContext();
-                var handle = new AddTask {
-                    A = source
-                }.ScheduleParallel(100, 20);
+                using (Profiler.BeginZone("Frame")) {
+                    TaskGraphManager.ResetContext();
+                    var handle = new AddTask {
+                        A = source
+                    }.ScheduleParallel(100, 20);
 
-                _ = new ResetTask {
-                    A = source
-                }.ScheduleParallel(100, 20, handle);
+                    _ = new ResetTask {
+                        A = source
+                    }.ScheduleParallel(100, 20, handle);
 
-                TaskGraphManager.Process();
+                    using (Profiler.BeginZone("TaskGraph Process")) {
+                        TaskGraphManager.Process();
+                    }
+                }
+
+                Profiler.EmitFrameMark();
             }
 
             TaskGraphManager.Shutdown();

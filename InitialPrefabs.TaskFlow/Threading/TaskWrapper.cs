@@ -44,6 +44,9 @@ namespace InitialPrefabs.TaskFlow.Threading {
             ITaskFor task,
             int offset,
             int length) {
+            if (FreeHandles.Count == 0) {
+                throw new InvalidOperationException();
+            }
 
             var free = FreeHandles[0];
             FreeHandles.RemoveAtSwapback(0);
@@ -55,10 +58,17 @@ namespace InitialPrefabs.TaskFlow.Threading {
             return (context, free);
         }
 
+        public static void ReturnAll() {
+            for (var i = UseHandles.Count - 1; i >= 0; i--) {
+                FreeHandles.Add(UseHandles[i]);
+                UseHandles.RemoveAtSwapback(i);
+            }
+        }
+
         public static void Return(ushort localHandle) {
             var idx = UseHandles.IndexOf(localHandle, default(UShortComparer));
             if (idx > -1) {
-                UseHandles.RemoveAtSwapback(idx);
+                UseHandles.RemoveAtSwapbackAsync(idx);
                 FreeHandles.Add(localHandle);
             }
         }

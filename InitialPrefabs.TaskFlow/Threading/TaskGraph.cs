@@ -259,8 +259,11 @@ namespace InitialPrefabs.TaskFlow.Threading {
                                     task,
                                     0,
                                     1);
-                                worker.Bind(ctx.TaskHandler, metadataPtr,
-                                    -1, ctxHandle);
+                                worker.Bind(
+                                    ctx.TaskHandler,
+                                    metadataPtr,
+                                    -1,
+                                    ctxHandle);
                                 WorkerRefs.Add(worker);
                                 Handles.Add((workerHandle, metadataPtr));
                                 break;
@@ -316,6 +319,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
                     // Return the worker
                     WorkerBuffer.Return((workerHandle, WorkerRefs[x]));
                 }
+                ExecutionContextBuffer.ReturnAll();
                 WorkerRefs.Clear();
                 Handles.Clear();
             }

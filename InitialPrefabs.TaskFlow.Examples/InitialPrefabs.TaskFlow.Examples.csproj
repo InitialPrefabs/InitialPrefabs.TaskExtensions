@@ -4,6 +4,10 @@
     <ProjectReference Include="..\InitialPrefabs.TaskFlow\InitialPrefabs.TaskFlow.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Tracy-CSharp" Version="0.11.1-hotfix" />
+  </ItemGroup>
+
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net8.0</TargetFramework>

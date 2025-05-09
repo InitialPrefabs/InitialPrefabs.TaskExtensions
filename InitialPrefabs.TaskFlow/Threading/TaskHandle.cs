@@ -51,6 +51,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
 
         public readonly ushort GlobalID => GlobalHandle;
 
+        // TODO: This allocates garbage, figure out how to reduce it
         public readonly ITaskFor Task => TaskUnitPool<T0>.ElementAt(LocalHandle);
 
         /// <summary>

@@ -25,6 +25,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
             public byte this[int i] => Data[i];
         }
 
+        // TODO: Replace this with a DynamicArray.
         internal readonly TaskWorker[] Workers;
         internal _Buffer Free;
         internal _Buffer Used;
@@ -32,8 +33,14 @@ namespace InitialPrefabs.TaskFlow.Threading {
         internal ushort FreeCounter;
         internal ushort UseCounter;
 
-        public WorkerBuffer() {
-            Workers = new TaskWorker[TaskConstants.MaxTasks];
+        public WorkerBuffer() : this(TaskConstants.MaxTasks) { }
+
+        public WorkerBuffer(int capacity) {
+            if (capacity >= TaskConstants.MaxTasks) {
+                throw new InvalidOperationException(
+                    "Cannot allocate more than the total # of tasks supported (256)!");
+            }
+            Workers = new TaskWorker[capacity];
             var free = new NoAllocList<WorkerHandle>(
                 Free.AsSpan(TaskConstants.MaxTasks),
                 FreeCounter);
@@ -91,7 +98,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
             var useHandles = new NoAllocList<WorkerHandle>(Used.AsSpan(), UseCounter);
             foreach (var handle in useHandles) {
                 var worker = Workers[handle];
-                worker.Reset();
+                _ = worker.Reset();
                 free.Add(handle);
             }
             FreeCounter = (ushort)free.Count;

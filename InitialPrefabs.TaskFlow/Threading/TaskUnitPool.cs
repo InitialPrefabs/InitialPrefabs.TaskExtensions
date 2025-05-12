@@ -52,7 +52,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
                 Tasks.Add(new TaskUnitRef<T0>(new T0()));
             }
 
-            TaskGraphManager.OnReset += Reset;
+            TaskGraphRunner.OnReset += Reset;
         }
 
         /// <summary>
@@ -86,9 +86,9 @@ namespace InitialPrefabs.TaskFlow.Threading {
             return ref Tasks.Collection[handle];
         }
 
-        public static void Reset() {
-            for (var i = 0; i < UsedHandles.Count; i++) {
-                FreeHandles.Add(UsedHandles[i]);
+        internal static void Reset() {
+            foreach (var handle in UsedHandles) {
+                FreeHandles.Add(handle);
             }
             UsedHandles.Clear();
         }

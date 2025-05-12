@@ -37,7 +37,8 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
             Assert.That((ushort)handle,
                     Is.EqualTo(TaskUnitPool<S>.Capacity - 1),
                     "Handle Index is not correct.");
-            var handles = new DynamicArray<LocalHandle>(5) { handle };
+            var handles = new DynamicArray<LocalHandle>(5);
+            handles.Add(handle);
 
             Assert.Multiple(() => {
                 var remaining = TaskUnitPool<S>.Remaining;

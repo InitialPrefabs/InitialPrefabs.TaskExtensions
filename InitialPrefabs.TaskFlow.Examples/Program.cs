@@ -23,14 +23,17 @@ namespace InitialPrefabs.TaskFlow.Examples {
     public class Program {
         public static void Main(string[] argv) {
             Profiler.AppInfo("Sample App");
-            _ = TaskGraphManager.Initialize();
+            new TaskGraphRunner.Builder()
+                .WithTaskCapacity(64)
+                .Build();
+
             LogUtils.OnLog += System.Console.WriteLine;
             var source = new int[100];
 
             for (var i = 0; i < 10000; i++) {
                 Console.WriteLine($"Iteration: {i}");
                 using (Profiler.BeginZone("Frame")) {
-                    TaskGraphManager.ResetContext();
+                    TaskGraphRunner.Reset();
 
                     var handle = new ResetTask {
                         A = source
@@ -41,7 +44,7 @@ namespace InitialPrefabs.TaskFlow.Examples {
                     }.ScheduleParallel(100, 20, handle);
 
                     using (Profiler.BeginZone("TaskGraph Process")) {
-                        TaskGraphManager.Process();
+                        TaskGraphRunner.Update();
                     }
                     var sum = 0;
                     foreach (var v in source) {
@@ -53,7 +56,7 @@ namespace InitialPrefabs.TaskFlow.Examples {
                 Profiler.EmitFrameMark();
             }
 
-            TaskGraphManager.Shutdown();
+            TaskGraphRunner.Shutdown();
         }
     }
 }

@@ -8,45 +8,19 @@ namespace InitialPrefabs.TaskFlow.Threading {
         internal const int MaxTasks = 256;
     }
 
-    internal static class TaskGraphExtensions {
-        public static Span<sbyte> AsSpan(this ref TaskGraph._Edges matrix) {
-            unsafe {
-                fixed (sbyte* ptr = matrix.Data) {
-                    return new Span<sbyte>(ptr, TaskConstants.MaxTasks);
-                }
-            }
-        }
-
-        public static void Reset(this ref TaskGraph._Edges matrix) {
-            var span = matrix.AsSpan();
-            foreach (ref var element in span) {
-                element = default;
-            }
-        }
-    }
-
     public class TaskGraph {
 
-        internal unsafe struct _Edges {
-            public fixed sbyte Data[TaskConstants.MaxTasks];
-        }
-
+        /// <summary>
+        /// We won't know how many tasks we track, so we reserve the total # of tasks we support.
+        /// This is effectively a giant bitflag to ensure we dont accidentally track the same
+        /// tasks over and over again.
+        /// </summary>
         internal unsafe struct _Bools {
             internal fixed byte Data[TaskConstants.MaxTasks / 4];
 
             public readonly Span<byte> AsSpan() {
                 fixed (byte* ptr = Data) {
                     return new Span<byte>(ptr, TaskConstants.MaxTasks / 4);
-                }
-            }
-        }
-
-        internal unsafe struct _AdjacencyMatrix {
-            public fixed byte Data[TaskConstants.MaxTasks * TaskConstants.MaxTasks];
-
-            public readonly Span<byte> AsSpan() {
-                fixed (byte* ptr = Data) {
-                    return new Span<byte>(ptr, TaskConstants.MaxTasks * TaskConstants.MaxTasks);
                 }
             }
         }
@@ -74,12 +48,9 @@ namespace InitialPrefabs.TaskFlow.Threading {
         internal DynamicArray<NodeMetadata> NodeMetadata;
         internal DynamicArray<ITaskUnitRef> TaskReferences;
 
-        // TODO: Change this to hold the index into NodeMetadata, TaskReferences, and TaskMetadata
         internal DynamicArray<ushort> Sorted;
-        internal DynamicArray<TaskMetadata> TaskMetadata; // TODO: Sort the metadata also?
+        internal DynamicArray<TaskMetadata> TaskMetadata;
         internal _Bools Bytes;
-        internal _Edges Edges;
-        internal _AdjacencyMatrix AdjacencyMatrix;
         internal _TaskGroups TaskGroups;
         internal ushort GroupCount;
 
@@ -87,23 +58,25 @@ namespace InitialPrefabs.TaskFlow.Threading {
         internal DynamicArray<TaskWorker> WorkerRefs;
         internal DynamicArray<(WorkerHandle workerHandle, UnmanagedRef<TaskMetadata> metadata)> Handles;
 
+        public TaskGraph(int taskCapacity) : this(taskCapacity, TaskConstants.MaxTasks) { }
+
         // TODO: Write an allocation strategy
-        public TaskGraph(int capacity) {
-            NodeMetadata = new DynamicArray<NodeMetadata>(capacity);
-            TaskReferences = new DynamicArray<ITaskUnitRef>(capacity);
+        public TaskGraph(int taskCapacity, int workerCapacity) {
+            NodeMetadata = new DynamicArray<NodeMetadata>(taskCapacity);
+            TaskReferences = new DynamicArray<ITaskUnitRef>(taskCapacity);
 
             // Nodes = new DynamicArray<INode<ushort>>(capacity);
-            Sorted = new DynamicArray<ushort>(capacity);
-            TaskMetadata = new DynamicArray<TaskMetadata>(capacity);
+            Sorted = new DynamicArray<ushort>(taskCapacity);
+            TaskMetadata = new DynamicArray<TaskMetadata>(taskCapacity);
 
-            for (var i = 0; i < capacity; i++) {
+            for (var i = 0; i < taskCapacity; i++) {
                 TaskMetadata.Add(new TaskMetadata());
             }
             TaskMetadata.Clear();
 
             WorkerBuffer = new WorkerBuffer();
-            WorkerRefs = new DynamicArray<TaskWorker>(TaskConstants.MaxTasks);
-            Handles = new DynamicArray<(WorkerHandle, UnmanagedRef<TaskMetadata>)>(TaskConstants.MaxTasks);
+            WorkerRefs = new DynamicArray<TaskWorker>(workerCapacity);
+            Handles = new DynamicArray<(WorkerHandle, UnmanagedRef<TaskMetadata>)>(workerCapacity);
         }
 
         public void Reset() {
@@ -116,12 +89,9 @@ namespace InitialPrefabs.TaskFlow.Threading {
             NodeMetadata.Clear();
             TaskReferences.Clear();
             TaskMetadata.Clear();
-            // Nodes.Clear();
             Sorted.Clear();
 
             Bytes = default;
-            Edges = default;
-            AdjacencyMatrix = default;
             TaskGroups = default;
             GroupCount = 0;
 
@@ -130,8 +100,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
         }
 
         public void Track<T0>(T0 trackedTask, TaskWorkload workload) where T0 : struct, INode<ushort> {
-            var span = Bytes.AsSpan();
-            var bitArray = new NoAllocBitArray(span);
+            var bitArray = new NoAllocBitArray(Bytes.AsSpan());
             var nodeMetadata = trackedTask.Metadata;
             if (!bitArray[nodeMetadata.GlobalID]) {
                 TaskMetadata.Add(new TaskMetadata(workload));
@@ -139,8 +108,6 @@ namespace InitialPrefabs.TaskFlow.Threading {
                 bitArray[nodeMetadata.GlobalID] = true;
                 NodeMetadata.Add(trackedTask.Metadata);
                 TaskReferences.Add(trackedTask.TaskRef);
-                // FIXME: Track the task and node metadata instead
-                // Nodes.Add(trackedTask);
             }
         }
 
@@ -160,18 +127,24 @@ namespace InitialPrefabs.TaskFlow.Threading {
             return false;
         }
 
+        internal int DetermineTotalWorkerCount() {
+            var sum = 0;
+            foreach (var taskMetadata in TaskMetadata) {
+                sum += taskMetadata.Workload.ThreadCount;
+            }
+            return sum;
+        }
+
         internal void Sort() {
             var taskCount = NodeMetadata.Count;
             if (taskCount == 0) {
                 return;
             }
 
-            Edges.Reset();
-            var inDegree = Edges.AsSpan();
-            Span<byte> _internalBytes = stackalloc byte[NoAllocBitArray.CalculateSize(
-                TaskConstants.MaxTasks)];
+            Span<byte> inDegree = stackalloc byte[taskCount];
+            Span<byte> _internalBytes = stackalloc byte[NoAllocBitArray.CalculateSize(taskCount)];
             var visited = new NoAllocBitArray(_internalBytes);
-            var adjacencyMatrix = AdjacencyMatrix.AsSpan();
+            Span<byte> adjacencyMatrix = stackalloc byte[taskCount * taskCount];
 
             for (var i = 0; i < taskCount; i++) {
                 var task = TaskReferences[i];
@@ -183,16 +156,15 @@ namespace InitialPrefabs.TaskFlow.Threading {
                     var childIdx = i;
 
                     if (parentIdx > -1) {
-                        adjacencyMatrix[(parentIdx * TaskConstants.MaxTasks) + childIdx] = 1;
+                        adjacencyMatrix[(parentIdx * taskCount) + childIdx] = 1;
                         inDegree[childIdx]++;
                     }
                 }
             }
 
             PrintAdjacencyMatrix(adjacencyMatrix, taskCount);
-            var totalTaskCountSq = taskCount * taskCount;
 
-            Span<ushort> _queue = stackalloc ushort[TaskConstants.MaxTasks];
+            Span<ushort> _queue = stackalloc ushort[taskCount];
             var queue = new NoAllocQueue<ushort>(_queue);
             for (ushort i = 0; i < taskCount; i++) {
                 if (inDegree[i] == 0) {
@@ -213,14 +185,9 @@ namespace InitialPrefabs.TaskFlow.Threading {
                 for (var i = 0; i < batchSize; i++) {
                     var taskIdx = queue.Dequeue();
                     Sorted.Add(taskIdx);
-                    // TODO: This honestly looks correct...?
-                    // Sorted.Add((
-                    //     TaskReferences[taskIdx],
-                    //     NodeMetadata[taskIdx],
-                    //     new UnmanagedRef<TaskMetadata>(ref TaskMetadata.ElementAt(taskIdx))));
 
                     for (ushort x = 0; x < taskCount; x++) {
-                        if (adjacencyMatrix[(taskIdx * TaskConstants.MaxTasks) + x] == 1) {
+                        if (adjacencyMatrix[(taskIdx * taskCount) + x] == 1) {
                             inDegree[x]--;
 
                             if (inDegree[x] == 0) {

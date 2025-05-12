@@ -14,7 +14,10 @@ namespace InitialPrefabs.TaskFlow.Collections.Tests {
 
         [Test]
         public void RemovingTheFirstElementInADynamicArray() {
-            var array = new DynamicArray<int>(3) { 1, 2, 3 };
+            var array = new DynamicArray<int>(3);
+            for (var i = 0; i < 3; i++) {
+                array.Add(i + 1);
+            }
             array.RemoveAt(0);
             Assert.Multiple(() => {
                 Assert.That(array, Has.Count.EqualTo(2));
@@ -42,9 +45,8 @@ namespace InitialPrefabs.TaskFlow.Collections.Tests {
 
         [Test]
         public void DynamicArrayFilled() {
-            var array = new DynamicArray<int>(10) {
-                1
-            };
+            var array = new DynamicArray<int>(10);
+            array.Add(1);
 
             Assert.That(
                 array,

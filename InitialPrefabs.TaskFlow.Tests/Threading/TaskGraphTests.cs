@@ -9,14 +9,14 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
         [SetUp]
         public void SetUp() {
             Assert.DoesNotThrow(static () => {
-                _ = TaskGraphManager.Initialize(5);
+                _ = TaskGraphRunner.Initialize(5);
             });
         }
 
         [TearDown]
         public void TearDown() {
             Assert.DoesNotThrow(static () => {
-                TaskGraphManager.Shutdown();
+                TaskGraphRunner.Shutdown();
             });
         }
     }
@@ -64,7 +64,8 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
 
         [SetUp]
         public void SetUp() {
-            graph = TaskGraphManager.Initialize(5);
+            TaskGraphRunner.Builder.Default().Build();
+            graph = TaskGraphRunner.Graph;
             var bitArray = new NoAllocBitArray(graph.Bytes.AsSpan());
             var index = 0;
             foreach (var element in bitArray) {
@@ -93,7 +94,7 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
 
         [TearDown]
         public void TearDown() {
-            TaskGraphManager.Shutdown();
+            TaskGraphRunner.Shutdown();
         }
 
         [Test]

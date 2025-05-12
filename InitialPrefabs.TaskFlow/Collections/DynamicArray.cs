@@ -29,7 +29,7 @@ namespace InitialPrefabs.TaskFlow.Collections {
     /// Similar to a <see cref="List{T}"/> with an internal array. This avoids having to
     /// construct an array via a list as we can access the <see cref="Collection"/>.
     /// </summary>
-    public class DynamicArray<T0> : IEnumerable<T0>, IReadOnlyList<T0> {
+    public class DynamicArray<T0> {
 
         public struct Enumerator<T1> : IEnumerator<T1> {
             public T1[] Ptr;
@@ -139,6 +139,7 @@ namespace InitialPrefabs.TaskFlow.Collections {
             };
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int IndexOf<T1>(T0 element, T1 comparer) where T1 : IComparer<T0> {
             for (var i = 0; i < Count; i++) {
                 if (comparer.Compare(element, Collection[i]) == 0) {
@@ -148,6 +149,7 @@ namespace InitialPrefabs.TaskFlow.Collections {
             return -1;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int Find(Predicate<T0> predicate) {
             for (var i = 0; i < Count; i++) {
                 var element = Collection[i];
@@ -158,16 +160,12 @@ namespace InitialPrefabs.TaskFlow.Collections {
             return -1;
         }
 
-        public IEnumerator<T0> GetEnumerator() {
+        public Enumerator<T0> GetEnumerator() {
             return new Enumerator<T0> {
                 Index = -1,
                 Length = Count,
                 Ptr = Collection
             };
-        }
-
-        IEnumerator IEnumerable.GetEnumerator() {
-            return GetEnumerator();
         }
     }
 }

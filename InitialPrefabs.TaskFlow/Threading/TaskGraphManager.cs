@@ -1,59 +1,75 @@
-﻿using System;
+﻿using InitialPrefabs.TaskFlow.Utils;
+using System;
 
 namespace InitialPrefabs.TaskFlow.Threading {
 
-    public static class TaskGraphManager {
+    public static class TaskGraphRunner {
 
         internal delegate void ResetHandler();
 
-        // TODO: I dont really like this, but I need to check and see if it's something to keep at
-        internal sealed class ShutdownHandler {
-            private Action onShutdown;
+        public ref struct Builder {
 
-            public void RegisterShutdown(ResetHandler resetHandler) {
-                onShutdown += () => {
-                    _OnReset -= resetHandler;
+            private int taskCapacity;
+            private int workerCapacity;
+
+            public static Builder Default() {
+                return new Builder {
+                    taskCapacity = TaskConstants.MaxTasks,
+                    workerCapacity = TaskConstants.MaxTasks
                 };
             }
 
-            ~ShutdownHandler() {
-                onShutdown?.Invoke();
-                onShutdown = null;
+            public Builder WithTaskCapacity(int capacity) {
+                taskCapacity = capacity;
+                return this;
+            }
+
+            public Builder WithWorkerCapacity(int capacity) {
+                workerCapacity = capacity;
+                return this;
+            }
+
+            public readonly Builder WithLogHandler(LogHandler handler) {
+                LogUtils.OnLog += handler;
+                return this;
+            }
+
+            public readonly Builder WithExceptionHandler(ExceptionHandler handler) {
+                LogUtils.OnException += handler;
+                return this;
+            }
+
+            public readonly void Build() {
+                if (TaskGraphRunner.Default != null) {
+                    throw new InvalidOperationException(
+                        "Cannot reinitialize the TaskGraph, please dispose the previous one first!");
+                }
+                UniqueID = 0;
+                TaskGraphRunner.Default = new TaskGraph(taskCapacity, workerCapacity);
             }
         }
 
-        private static event ResetHandler _OnReset;
+        public static TaskGraph Graph => Default;
+        private static ResetHandler _ResetHandler;
 
         internal static event ResetHandler OnReset {
             add {
-                _OnReset -= value;
-                _OnReset += value;
-                _ShutdownHandler.RegisterShutdown(value);
+                _ResetHandler -= value;
+                _ResetHandler += value;
             }
-
-            remove => _OnReset -= value;
+            remove =>
+                _ResetHandler -= value;
         }
-
-        internal static readonly ShutdownHandler _ShutdownHandler = new ShutdownHandler();
-
-        public static TaskGraph Graph => Default;
 
         internal static TaskGraph Default;
         internal static ushort UniqueID;
 
-        public static TaskGraph Initialize(int capacity = 5) {
-            Default = new TaskGraph(capacity);
-            UniqueID = 0;
-            return Default;
-        }
-
-        public static void ResetContext() {
+        public static void Reset() {
             UniqueID = 0;
             Default.Reset();
-            _OnReset?.Invoke();
         }
 
-        public static void Process() {
+        public static void Update() {
             Default.Sort();
             Default.Process();
         }

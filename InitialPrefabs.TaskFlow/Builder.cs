@@ -9,12 +9,13 @@ namespace InitialPrefabs.TaskFlow {
         private int taskCapacity;
         private int workerCapacity;
 
-        public static Builder Default() {
-            return new Builder {
+        public static Builder Default =>
+            new Builder {
                 taskCapacity = TaskConstants.MaxTasks,
                 workerCapacity = TaskConstants.MaxTasks
-            };
-        }
+            }
+                .WithLogHandler(Console.WriteLine)
+                .WithExceptionHandler(static err => Console.WriteLine(err.StackTrace));
 
         public Builder WithTaskCapacity(int capacity) {
             taskCapacity = capacity;

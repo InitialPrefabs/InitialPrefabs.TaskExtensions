@@ -11,7 +11,7 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
         public void SetUp() {
             buffer = new WorkerBuffer();
 
-            for (var i = 0; i < buffer.Workers.Length; i++) {
+            for (var i = 0; i < buffer.Workers.Capacity; i++) {
                 var worker = buffer.Workers[i];
                 Assert.That(worker, Is.Not.Null, "Worker not initialized!");
             }
@@ -25,7 +25,7 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
         [TearDown]
         public void TearDown() {
             ((IDisposable)buffer).Dispose();
-            for (var i = 0; i < buffer.Workers.Length; i++) {
+            for (var i = 0; i < buffer.Workers.Capacity; i++) {
                 var worker = buffer.Workers[i];
                 worker.WaitHandle.Dispose();
             }

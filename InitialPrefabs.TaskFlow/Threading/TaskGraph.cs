@@ -74,7 +74,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
             }
             TaskMetadata.Clear();
 
-            WorkerBuffer = new WorkerBuffer();
+            WorkerBuffer = new WorkerBuffer(workerCapacity);
             WorkerRefs = new DynamicArray<TaskWorker>(workerCapacity);
             Handles = new DynamicArray<(WorkerHandle, UnmanagedRef<TaskMetadata>)>(workerCapacity);
         }

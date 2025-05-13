@@ -25,8 +25,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
             public byte this[int i] => Data[i];
         }
 
-        // TODO: Replace this with a DynamicArray.
-        internal readonly TaskWorker[] Workers;
+        internal readonly DynamicArray<TaskWorker> Workers;
         internal _Buffer Free;
         internal _Buffer Used;
 
@@ -36,20 +35,20 @@ namespace InitialPrefabs.TaskFlow.Threading {
         public WorkerBuffer() : this(TaskConstants.MaxTasks) { }
 
         public WorkerBuffer(int capacity) {
-            if (capacity >= TaskConstants.MaxTasks) {
+            if (capacity > TaskConstants.MaxTasks) {
                 throw new InvalidOperationException(
                     "Cannot allocate more than the total # of tasks supported (256)!");
             }
-            Workers = new TaskWorker[capacity];
+            Workers = new DynamicArray<TaskWorker>(capacity);
             var free = new NoAllocList<WorkerHandle>(
-                Free.AsSpan(TaskConstants.MaxTasks),
+                Free.AsSpan(capacity),
                 FreeCounter);
 
-            for (var i = 0; i < TaskConstants.MaxTasks; i++) {
-                Workers[i] = new TaskWorker();
+            for (var i = 0; i < capacity; i++) {
+                Workers.Add(new TaskWorker());
                 free.Add(new WorkerHandle((byte)i));
             }
-            FreeCounter = TaskConstants.MaxTasks;
+            FreeCounter = (ushort)capacity;
         }
 
         ~WorkerBuffer() {
@@ -107,9 +106,10 @@ namespace InitialPrefabs.TaskFlow.Threading {
         }
 
         public void Dispose() {
-            for (var i = 0; i < Workers.Length; i++) {
+            for (var i = 0; i < Workers.Capacity; i++) {
                 Workers[i].Dispose();
             }
+            Workers.Clear();
             GC.SuppressFinalize(this);
         }
     }

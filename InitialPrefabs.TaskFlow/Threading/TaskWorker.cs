@@ -86,7 +86,6 @@ namespace InitialPrefabs.TaskFlow.Threading {
             var ctx = (WorkerContext)state;
 #if DEBUG
             if (!ctx.IsValid) {
-                Console.WriteLine("Screwed up");
                 throw new InvalidOperationException("Failed to execute the worker thread!");
             }
 #endif

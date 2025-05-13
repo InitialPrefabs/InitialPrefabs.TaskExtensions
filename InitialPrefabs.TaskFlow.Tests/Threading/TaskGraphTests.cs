@@ -9,7 +9,7 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
         [SetUp]
         public void SetUp() {
             Assert.DoesNotThrow(static () => {
-                _ = TaskGraphRunner.Initialize(5);
+                Builder.Default().Build();
             });
         }
 
@@ -64,7 +64,7 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
 
         [SetUp]
         public void SetUp() {
-            TaskGraphRunner.Builder.Default().Build();
+            Builder.Default().Build();
             graph = TaskGraphRunner.Graph;
             var bitArray = new NoAllocBitArray(graph.Bytes.AsSpan());
             var index = 0;

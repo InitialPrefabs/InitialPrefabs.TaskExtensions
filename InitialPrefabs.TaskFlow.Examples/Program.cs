@@ -23,8 +23,10 @@ namespace InitialPrefabs.TaskFlow.Examples {
     public class Program {
         public static void Main(string[] argv) {
             Profiler.AppInfo("Sample App");
-            new TaskGraphRunner.Builder()
+            new Builder()
                 .WithTaskCapacity(64)
+                .WithWorkerCapacity(64)
+                .WithLogHandler(Console.WriteLine)
                 .Build();
 
             LogUtils.OnLog += System.Console.WriteLine;

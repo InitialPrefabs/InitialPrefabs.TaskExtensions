@@ -79,7 +79,7 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
                     "Did not empty!");
 
             handles.Add(TaskUnitPool<S>.Rent(new S { Value = 0 }));
-            Assert.That(TaskUnitPool<S>.Tasks,
+            Assert.That(TaskUnitPool<S>.Pool.Values,
                     Has.Count.EqualTo(6),
                     "Did not create a new Task to be stored.");
         }
@@ -93,7 +93,7 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
             }
 
             foreach (var handle in handles) {
-                ref var task = ref TaskUnitPool<S>.ElementAt(handle);
+                var task = TaskUnitPool<S>.ElementAt(handle);
                 var t = (TaskUnitRef<S>)task;
                 Assert.That(t.Task, Is.EqualTo(default(S)));
             }

@@ -25,9 +25,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
         NodeMetadata Metadata { get; }
     }
 
-    // TODO: Maybe this should be stored as a class and reused.
-    public struct TaskHandle<T0> : INode<ushort>
-        where T0 : struct, ITaskFor {
+    public struct TaskHandle : INode<ushort> {
 
         public readonly NodeMetadata Metadata => new NodeMetadata {
             GlobalID = GlobalHandle,
@@ -37,12 +35,18 @@ namespace InitialPrefabs.TaskFlow.Threading {
 
         internal readonly LocalHandle LocalHandle;
         internal readonly ushort GlobalHandle;
+        internal readonly ITaskDefPoolable Pool;
 
         // TODO: Add the dependencies, the dependencies need to store the handles.
         internal FixedUInt16Array32 Parents;
 
-        public TaskHandle(LocalHandle local) {
+        internal static TaskHandle Get<T0>(LocalHandle local) where T0 : struct, ITaskFor {
+            return new TaskHandle(local, TaskUnitPool<T0>.Pool);
+        }
+
+        private TaskHandle(LocalHandle local, ITaskDefPoolable pool) {
             LocalHandle = local;
+            Pool = pool;
             Parents = new FixedUInt16Array32();
             GlobalHandle = TaskGraphRunner.UniqueID++;
         }
@@ -51,8 +55,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
 
         public readonly ushort GlobalID => GlobalHandle;
 
-        // TODO: This allocates garbage, figure out how to reduce it
-        public readonly ITaskUnitRef TaskRef => TaskUnitPool<T0>.ElementAt(LocalHandle);
+        public readonly ITaskUnitRef TaskRef => Pool.ElementAt(LocalHandle);
 
         /// <summary>
         /// Allows the TaskHandle to be returned back to its associated
@@ -64,7 +67,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
         /// </remarks>
         /// </summary>
         public readonly void Dispose() {
-            TaskUnitPool<T0>.Return(LocalHandle);
+            Pool.ReturnHandle(LocalHandle);
         }
 
         public readonly ReadOnlySpan<ushort> GetDependencies() {
@@ -82,12 +85,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
     }
 
     public static class TaskHandleExtensions {
-        public static void DependsOn<T0, T1>(
-            this ref TaskHandle<T0> handle,
-            TaskHandle<T1> dependsOn)
-            where T0 : struct, ITaskFor
-            where T1 : struct, ITaskFor {
-
+        public static void DependsOn(this ref TaskHandle handle, TaskHandle dependsOn) {
             // TODO: This performs 2 copies
             var metadata = handle.Metadata;
             var handleIdx = TaskGraphRunner.Default.NodeMetadata.IndexOf(metadata,
@@ -104,20 +102,18 @@ namespace InitialPrefabs.TaskFlow.Threading {
             }
         }
 
-        public static TaskHandle<T0> Schedule<T0>(this T0 task) where T0 : struct, ITaskFor {
+        public static TaskHandle Schedule<T0>(this T0 task) where T0 : struct, ITaskFor {
             var dependencies = Span<ushort>.Empty;
             return task.Schedule(dependencies);
         }
 
-        public static TaskHandle<T0> Schedule<T0, T1>(this T0 task, TaskHandle<T1> dependsOn)
-            where T0 : struct, ITaskFor
-            where T1 : struct, ITaskFor {
-
+        public static TaskHandle Schedule<T0>(this T0 task, TaskHandle dependsOn)
+            where T0 : struct, ITaskFor {
             Span<ushort> dependencies = stackalloc ushort[1] { dependsOn.GlobalID };
             return task.Schedule(dependencies);
         }
 
-        public static TaskHandle<T0> Schedule<T0>(this T0 task, Span<ushort> dependsOn)
+        public static TaskHandle Schedule<T0>(this T0 task, Span<ushort> dependsOn)
             where T0 : struct, ITaskFor {
             var handle = TaskUnitPool<T0>.Rent(task);
             var dependencies = new FixedUInt16Array32();
@@ -125,29 +121,26 @@ namespace InitialPrefabs.TaskFlow.Threading {
                 dependencies.Add(dependsOn[i]);
             }
 
-            // TODO: Rent this
-            var taskHandle = new TaskHandle<T0>(handle) {
-                Parents = dependencies
-            };
+            var taskHandle = TaskHandle.Get<T0>(handle);
+            taskHandle.Parents = dependencies;
 
             TaskGraphRunner.Default.Track(taskHandle, TaskWorkload.SingleUnit());
             return taskHandle;
         }
 
-        public static TaskHandle<T0> Schedule<T0>(this T0 task, int length)
+        public static TaskHandle Schedule<T0>(this T0 task, int length)
             where T0 : struct, ITaskFor {
             var dependencies = Span<ushort>.Empty;
             return task.Schedule(length, dependencies);
         }
 
-        public static TaskHandle<T0> Schedule<T0, T1>(this T0 task, int length, TaskHandle<T1> dependsOn)
-            where T0 : struct, ITaskFor
-            where T1 : struct, ITaskFor {
+        public static TaskHandle Schedule<T0>(this T0 task, int length, TaskHandle dependsOn)
+            where T0 : struct, ITaskFor {
             Span<ushort> dependencies = stackalloc ushort[1] { dependsOn.GlobalID };
             return task.Schedule(length, dependencies);
         }
 
-        public static TaskHandle<T0> Schedule<T0>(
+        public static TaskHandle Schedule<T0>(
             this T0 task,
             int length,
             Span<ushort> dependsOn)
@@ -160,9 +153,8 @@ namespace InitialPrefabs.TaskFlow.Threading {
                 parents.Add(dependsOn[i]);
             }
 
-            var taskHandle = new TaskHandle<T0>(handle) {
-                Parents = parents
-            };
+            var taskHandle = TaskHandle.Get<T0>(handle);
+            taskHandle.Parents = parents;
 
             TaskGraphRunner.Default.Track(
                 taskHandle,
@@ -170,7 +162,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
             return taskHandle;
         }
 
-        public static TaskHandle<T0> ScheduleParallel<T0>(
+        public static TaskHandle ScheduleParallel<T0>(
             this T0 task,
             int total,
             int batchSize)
@@ -181,20 +173,19 @@ namespace InitialPrefabs.TaskFlow.Threading {
                 dependencies);
         }
 
-        public static TaskHandle<T0> ScheduleParallel<T0, T1>(
+        public static TaskHandle ScheduleParallel<T0>(
             this T0 task,
             int total,
             int batchSize,
-            TaskHandle<T1> dependsOn)
-            where T0 : struct, ITaskFor
-            where T1 : struct, ITaskFor {
+            TaskHandle dependsOn)
+            where T0 : struct, ITaskFor {
             Span<ushort> dependencies = stackalloc ushort[1] { dependsOn.GlobalID };
             return task.ScheduleParallel(
                 TaskWorkload.MultiUnit(total, batchSize),
                 dependencies);
         }
 
-        public static TaskHandle<T0> ScheduleParallel<T0>(
+        public static TaskHandle ScheduleParallel<T0>(
             this T0 task,
             int total,
             int batchSize,
@@ -206,7 +197,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
                 dependsOn);
         }
 
-        public static TaskHandle<T0> ScheduleParallel<T0>(
+        public static TaskHandle ScheduleParallel<T0>(
             this T0 task,
             TaskWorkload workload,
             Span<ushort> dependsOn)
@@ -218,12 +209,10 @@ namespace InitialPrefabs.TaskFlow.Threading {
                 parents.Add(dependsOn[i]);
             }
 
-            // TODO: Rent this
-            var taskHandle = new TaskHandle<T0>(handle) {
-                Parents = parents
-            };
+            var taskHandle = TaskHandle.Get<T0>(handle);
+            taskHandle.Parents = parents;
 
-            TaskGraphRunner.Default.Track<TaskHandle<T0>>(taskHandle, workload);
+            TaskGraphRunner.Default.Track(taskHandle, workload);
             return taskHandle;
         }
 

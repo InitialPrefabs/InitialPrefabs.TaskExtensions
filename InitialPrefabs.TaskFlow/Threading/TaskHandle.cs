@@ -83,7 +83,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
             get {
                 var graph = TaskGraphRunner.Graph;
                 if (graph != null) {
-                    var bitArray = new NoAllocBitArray(graph.CompletionFlags.AsSpan());
+                    var bitArray = new NoAllocBitArray(graph.PreviousCompletionFlags.AsSpan());
                     return bitArray[GlobalHandle];
                 }
                 return false;

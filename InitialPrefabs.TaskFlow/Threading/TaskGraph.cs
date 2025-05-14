@@ -52,6 +52,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
         internal DynamicArray<ushort> Sorted;
         internal DynamicArray<TaskMetadata> TaskMetadata;
         internal _Bools TrackingFlags;
+        internal _Bools PreviousCompletionFlags;
         internal _Bools CompletionFlags;
         internal _TaskGroups TaskGroups;
         internal ushort GroupCount;
@@ -268,6 +269,8 @@ namespace InitialPrefabs.TaskFlow.Threading {
                     completionFlags[node.GlobalID] = true;
                 }
             }
+            // Setup the previous completion flags, just so we know what is completed
+            PreviousCompletionFlags = CompletionFlags;
         }
 
         [Conditional("DEBUG")]

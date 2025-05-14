@@ -92,7 +92,6 @@ namespace InitialPrefabs.TaskFlow.Threading {
 #endif
 
             ref var m = ref ctx.TaskMetadata.Ref;
-            Console.WriteLine($"Thead Idx: {ctx.ThreadIndex}");
             try {
                 ctx.ExecutionHandler.Invoke();
             } catch (Exception err) {

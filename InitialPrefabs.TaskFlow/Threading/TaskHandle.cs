@@ -79,13 +79,15 @@ namespace InitialPrefabs.TaskFlow.Threading {
             }
         }
 
-        public readonly bool IsCompleted() {
-            var graph = TaskGraphRunner.Graph;
-            if (graph != null) {
-                var bitArray = new NoAllocBitArray(graph.CompletionFlags.AsSpan());
-                return bitArray[GlobalHandle];
+        public readonly bool IsCompleted {
+            get {
+                var graph = TaskGraphRunner.Graph;
+                if (graph != null) {
+                    var bitArray = new NoAllocBitArray(graph.CompletionFlags.AsSpan());
+                    return bitArray[GlobalHandle];
+                }
+                return false;
             }
-            return false;
         }
 
         public readonly void Complete() {

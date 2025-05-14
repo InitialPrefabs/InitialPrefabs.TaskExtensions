@@ -1,7 +1,6 @@
 ﻿using InitialPrefabs.TaskFlow.Collections;
 using NUnit.Framework;
 using System;
-using System.ComponentModel;
 using System.Threading;
 
 namespace InitialPrefabs.TaskFlow.Threading.Tests {
@@ -65,7 +64,7 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
 
         [SetUp]
         public void SetUp() {
-            Assert.That(new TaskHandle().IsCompleted(), Is.EqualTo(false),
+            Assert.That(new TaskHandle().IsCompleted, Is.EqualTo(false),
                 "A TaskHandle without setting up a Default Graph should not be completed.");
             Builder.Default.Build();
             graph = TaskGraphRunner.Graph;
@@ -315,7 +314,7 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
             }.Schedule(8);
 
             handleA.Complete();
-            Assert.That(handleA.IsCompleted());
+            Assert.That(handleA.IsCompleted);
 
             // Schedule 2 loops onto 2 threads
             var handleB = new U {

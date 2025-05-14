@@ -1,6 +1,7 @@
 ﻿using InitialPrefabs.TaskFlow.Collections;
 using System;
 using System.Diagnostics;
+using System.Threading.Tasks;
 
 namespace InitialPrefabs.TaskFlow.Threading {
 
@@ -50,7 +51,8 @@ namespace InitialPrefabs.TaskFlow.Threading {
 
         internal DynamicArray<ushort> Sorted;
         internal DynamicArray<TaskMetadata> TaskMetadata;
-        internal _Bools Bytes;
+        internal _Bools TrackingFlags;
+        internal _Bools CompletionFlags;
         internal _TaskGroups TaskGroups;
         internal ushort GroupCount;
 
@@ -79,6 +81,11 @@ namespace InitialPrefabs.TaskFlow.Threading {
             Handles = new DynamicArray<(WorkerHandle, UnmanagedRef<TaskMetadata>)>(workerCapacity);
         }
 
+        ~TaskGraph() {
+            Reset();
+            WorkerBuffer.Dispose();
+        }
+
         public void Reset() {
             // Reset all metadata
             for (var i = 0; i < TaskMetadata.Collection.Length; i++) {
@@ -91,7 +98,8 @@ namespace InitialPrefabs.TaskFlow.Threading {
             TaskMetadata.Clear();
             Sorted.Clear();
 
-            Bytes = default;
+            TrackingFlags = default;
+            CompletionFlags = default;
             TaskGroups = default;
             GroupCount = 0;
 
@@ -100,42 +108,19 @@ namespace InitialPrefabs.TaskFlow.Threading {
         }
 
         public void Track<T0>(T0 trackedTask, TaskWorkload workload) where T0 : struct, INode<ushort> {
-            var bitArray = new NoAllocBitArray(Bytes.AsSpan());
+            var trackingFlags = new NoAllocBitArray(TrackingFlags.AsSpan());
             var nodeMetadata = trackedTask.Metadata;
-            if (!bitArray[nodeMetadata.GlobalID]) {
+            if (!trackingFlags[nodeMetadata.GlobalID]) {
                 TaskMetadata.Add(new TaskMetadata(workload));
                 // When we track a task, the associated metadata must also be enabled
-                bitArray[nodeMetadata.GlobalID] = true;
+                trackingFlags[nodeMetadata.GlobalID] = true;
                 NodeMetadata.Add(trackedTask.Metadata);
                 TaskReferences.Add(trackedTask.TaskRef);
             }
         }
 
-        internal bool IsDependent(int index) {
-            for (var i = 0; i < NodeMetadata.Count; i++) {
-                if (i == index) {
-                    continue;
-                }
-
-                var node = NodeMetadata[i];
-                foreach (var dependency in node.Parents) {
-                    if (dependency == index) {
-                        return true;
-                    }
-                }
-            }
-            return false;
-        }
-
-        internal int DetermineTotalWorkerCount() {
-            var sum = 0;
-            foreach (var taskMetadata in TaskMetadata) {
-                sum += taskMetadata.Workload.ThreadCount;
-            }
-            return sum;
-        }
-
         internal void Sort() {
+            Sorted.Clear(); // Clear all sorted.
             var taskCount = NodeMetadata.Count;
             if (taskCount == 0) {
                 return;
@@ -203,21 +188,31 @@ namespace InitialPrefabs.TaskFlow.Threading {
             GroupCount = batchIndex;
 
             if (Sorted.Count != taskCount) {
-                throw new InvalidOperationException("Cyclic dependencies occurred, aborting!");
+                throw new InvalidOperationException($"Cyclic dependencies occurred, aborting! Sorted Count: {Sorted.Count}, Total Task Count: {taskCount}");
             }
+        }
+
+        public async void ProcessAsync() {
+            await Task.Factory.StartNew(Process);
         }
 
         public void Process() {
             var taskGroups = TaskGroups.AsSpan(GroupCount);
+            var flags = new NoAllocBitArray(CompletionFlags.AsSpan());
             for (var i = 0; i < GroupCount; i++) {
                 var slice = taskGroups[i];
 
                 for (var x = 0; x < slice.Count; x++) {
-                    var offset = x + slice.Start;
+                    var index = x + slice.Start;
                     // (var task, var node, var metadataPtr) =
-                    var sortIdx = Sorted[offset];
+                    var sortIdx = Sorted[index];
                     var task = TaskReferences[sortIdx];
                     var node = NodeMetadata[sortIdx];
+
+                    if (flags[node.GlobalID]) {
+                        continue;
+                    }
+
                     var metadataPtr = new UnmanagedRef<TaskMetadata>(ref TaskMetadata.Collection[sortIdx]);
 
                     var metadata = metadataPtr.Ref;
@@ -263,6 +258,15 @@ namespace InitialPrefabs.TaskFlow.Threading {
                 WorkerBuffer.ReturnAll();
                 WorkerRefs.Clear();
                 Handles.Clear();
+
+                var completionFlags= new NoAllocBitArray(CompletionFlags.AsSpan());
+                // We have to mark which nodes have finished.
+                for (var x = 0; x < slice.Count; x++) {
+                    var index = x + slice.Start;
+                    var sortIdx = Sorted[index];
+                    var node = NodeMetadata[sortIdx];
+                    completionFlags[node.GlobalID] = true;
+                }
             }
         }
 

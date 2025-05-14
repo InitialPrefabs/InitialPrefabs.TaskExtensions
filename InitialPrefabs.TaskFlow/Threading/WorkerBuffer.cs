@@ -51,10 +51,6 @@ namespace InitialPrefabs.TaskFlow.Threading {
             FreeCounter = (ushort)capacity;
         }
 
-        ~WorkerBuffer() {
-            Dispose();
-        }
-
         public (WorkerHandle handle, TaskWorker worker) Rent() {
             var free = new NoAllocList<WorkerHandle>(
                 Free.AsSpan(),

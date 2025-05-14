@@ -10,7 +10,6 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
         [SetUp]
         public void SetUp() {
             buffer = new WorkerBuffer();
-
             for (var i = 0; i < buffer.Workers.Capacity; i++) {
                 var worker = buffer.Workers[i];
                 Assert.That(worker, Is.Not.Null, "Worker not initialized!");
@@ -24,7 +23,7 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
 
         [TearDown]
         public void TearDown() {
-            ((IDisposable)buffer).Dispose();
+            buffer.Dispose();
             for (var i = 0; i < buffer.Workers.Capacity; i++) {
                 var worker = buffer.Workers[i];
                 worker.WaitHandle.Dispose();
@@ -50,6 +49,17 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
                 Assert.That(buffer.Used[0], Is.EqualTo(0),
                     "Worker 0 should be tracked");
             });
+        }
+
+        [Test]
+        public void ConstructingAnInvalidWorkerBuffer() {
+            var exception = Assert.Throws<InvalidOperationException>(static () => {
+                _ = new WorkerBuffer(512);
+            });
+            Assert.That(
+                exception,
+                Is.Not.Null,
+                "An exception should have been thrown if the max capacity is exceeded");
         }
 
         [Test]

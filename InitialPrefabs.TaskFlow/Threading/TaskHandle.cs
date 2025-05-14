@@ -79,6 +79,23 @@ namespace InitialPrefabs.TaskFlow.Threading {
             }
         }
 
+        public readonly bool IsCompleted() {
+            var graph = TaskGraphRunner.Graph;
+            if (graph != null) {
+                var bitArray = new NoAllocBitArray(graph.CompletionFlags.AsSpan());
+                return bitArray[GlobalHandle];
+            }
+            return false;
+        }
+
+        public readonly void Complete() {
+            var graph = TaskGraphRunner.Graph;
+            if (graph != null) {
+                graph.Sort();
+                graph.Process();
+            }
+        }
+
         public readonly bool IsEmpty() {
             return Parents.Count == 0;
         }

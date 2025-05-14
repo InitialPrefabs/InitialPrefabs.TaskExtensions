@@ -1,6 +1,7 @@
 ﻿using InitialPrefabs.TaskFlow.Collections;
 using NUnit.Framework;
 using System;
+using System.ComponentModel;
 using System.Threading;
 
 namespace InitialPrefabs.TaskFlow.Threading.Tests {
@@ -64,9 +65,11 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
 
         [SetUp]
         public void SetUp() {
+            Assert.That(new TaskHandle().IsCompleted(), Is.EqualTo(false),
+                "A TaskHandle without setting up a Default Graph should not be completed.");
             Builder.Default.Build();
             graph = TaskGraphRunner.Graph;
-            var bitArray = new NoAllocBitArray(graph.Bytes.AsSpan());
+            var bitArray = new NoAllocBitArray(graph.TrackingFlags.AsSpan());
             var index = 0;
             foreach (var element in bitArray) {
                 bitArray[index++] = true;
@@ -85,7 +88,7 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
                 Assert.That(graph.TaskReferences, Has.Count.EqualTo(0),
                         "Tracked TaskReferences were not resetted");
 
-                var bitArray = new NoAllocBitArray(graph.Bytes.AsSpan());
+                var bitArray = new NoAllocBitArray(graph.TrackingFlags.AsSpan());
                 foreach (var element in bitArray) {
                     Assert.That(!element, "Did not reset");
                 }
@@ -235,6 +238,18 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
         }
 
         [Test]
+        public void SortingNoTasksReturnsEarly() {
+            var completionFlags = new NoAllocBitArray(graph.CompletionFlags.AsSpan());
+            foreach (var element in completionFlags) {
+                Assert.That(element, Is.Not.EqualTo(true));
+            }
+            graph.Sort();
+            foreach (var element in completionFlags) {
+                Assert.That(element, Is.Not.EqualTo(true));
+            }
+        }
+
+        [Test]
         public void ParallelForTest() {
             var dst = new int[8];
             var b = new int[] { 1, 2, 3, 4, 5, 6, 7, 8 };
@@ -271,6 +286,36 @@ namespace InitialPrefabs.TaskFlow.Threading.Tests {
             var handleA = new V {
                 A = a
             }.Schedule(8);
+
+            // Schedule 2 loops onto 2 threads
+            var handleB = new U {
+                A = a,
+                B = b
+            }.ScheduleParallel(8, 4, handleA);
+
+            graph.Sort();
+            Assert.That(graph.Sorted, Has.Count.EqualTo(2));
+            graph.Process();
+
+            for (var i = 0; i < 8; i++) {
+                Assert.That(a[i], Is.EqualTo(i * 2),
+                    $"Failed at index: {i}");
+            }
+        }
+
+        [Test]
+        public void TaskHandleCompletionTest() {
+            var a = new int[8];
+            var b = new int[8] { 0, 1, 2, 3, 4, 5, 6, 7 };
+            var graph = TaskGraphRunner.Graph;
+
+            // Schedule a loop on a thread
+            var handleA = new V {
+                A = a
+            }.Schedule(8);
+
+            handleA.Complete();
+            Assert.That(handleA.IsCompleted());
 
             // Schedule 2 loops onto 2 threads
             var handleB = new U {

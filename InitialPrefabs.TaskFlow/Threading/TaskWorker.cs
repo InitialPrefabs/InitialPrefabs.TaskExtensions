@@ -43,6 +43,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
             public WorkerContext() {
                 Length = 0;
                 Offset = 0;
+                ThreadIndex = -1;
                 task = null;
 
                 ExecutionHandler = () => {
@@ -62,7 +63,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
                 Length = length;
                 this.task = task;
                 TaskMetadata = taskMetadata;
-                ThreadIndex = -1;
+                ThreadIndex = threadIdx;
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -76,7 +77,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
             public bool IsValid => Length > 0 && task != null && TaskMetadata.IsValid;
         }
 
-        private static readonly WaitCallback WorkItemHandler;
+        internal static readonly WaitCallback WorkItemHandler;
 
         static TaskWorker() {
             WorkItemHandler = Execute;
@@ -91,6 +92,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
 #endif
 
             ref var m = ref ctx.TaskMetadata.Ref;
+            Console.WriteLine($"Thead Idx: {ctx.ThreadIndex}");
             try {
                 ctx.ExecutionHandler.Invoke();
             } catch (Exception err) {
@@ -106,7 +108,7 @@ namespace InitialPrefabs.TaskFlow.Threading {
                     if (ctx.ThreadIndex != -1) {
                         _ = Interlocked.Exchange(
                             ref ctx.TaskMetadata.Ref.CompletionFlags,
-                            1 << ctx.ThreadIndex);
+                            ctx.TaskMetadata.Ref.CompletionFlags | 1 << ctx.ThreadIndex);
                     }
                 }
             }

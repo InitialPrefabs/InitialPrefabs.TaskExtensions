@@ -19,20 +19,19 @@ namespace InitialPrefabs.TaskFlow.Collections {
     }
 
     public ref struct NoAllocList<T> {
-
         internal readonly Span<T> Span;
-        public readonly int Length;
-        internal int Count;
+        public readonly int Capacity;
+        public int Count { get; internal set; }
 
         public NoAllocList(Span<T> span) {
             Span = span;
-            Length = span.Length;
+            Capacity = span.Length;
             Count = 0;
         }
 
         public NoAllocList(Span<T> span, int count) {
             Span = span;
-            Length = span.Length;
+            Capacity = span.Length;
             Count = count;
         }
 
@@ -59,7 +58,7 @@ namespace InitialPrefabs.TaskFlow.Collections {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void Add<T>(this ref NoAllocList<T> list, T item) where T : unmanaged {
-            if (list.Count >= list.Length) {
+            if (list.Count >= list.Capacity) {
                 return;
             }
             list.Span[list.Count++] = item;

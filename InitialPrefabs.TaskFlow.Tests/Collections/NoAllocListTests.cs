@@ -29,11 +29,11 @@ namespace InitialPrefabs.TaskFlow.Collections.Tests {
                     "Element should have been added.");
             });
 
-            for (var i = 0; i < list.Length - 1; i++) {
+            for (var i = 0; i < list.Capacity - 1; i++) {
                 list.Add(i + 1);
             }
 
-            for (var i = 0; i < list.Length; i++) {
+            for (var i = 0; i < list.Capacity; i++) {
                 Assert.That(
                     list[i],
                     Is.EqualTo(i),

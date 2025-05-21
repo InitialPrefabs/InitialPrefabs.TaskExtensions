@@ -19,7 +19,7 @@ namespace InitialPrefabs.TaskFlow.Collections {
     }
 
     public ref struct NoAllocList<T> {
-        internal readonly Span<T> Span;
+        public readonly Span<T> Span;
         public readonly int Capacity;
         public int Count { get; internal set; }
 

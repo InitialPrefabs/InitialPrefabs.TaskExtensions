@@ -1,6 +1,9 @@
 ﻿using InitialPrefabs.TaskFlow.Threading;
-using InitialPrefabs.TaskFlow.Utils;
+using Silk.NET.Maths;
+using Silk.NET.OpenGL;
+using Silk.NET.Windowing;
 using System;
+using System.Drawing;
 
 namespace InitialPrefabs.TaskFlow.Examples {
 
@@ -20,45 +23,107 @@ namespace InitialPrefabs.TaskFlow.Examples {
         }
     }
 
+    public static class OpenGLExtensions {
+        private const string Spirv = "GL_ARB_gl_spirv";
+
+        public static void SupportsSpirv(this GL gl) {
+            Console.WriteLine($"{Spirv} supported: {Contains(gl, Spirv)}");
+        }
+
+        public static bool Contains(this GL gl, string s) {
+            var numExtensions = gl.GetInteger(GLEnum.NumExtensions);
+
+            for (var i = 0; i < numExtensions; i++) {
+                var ext = gl.GetStringS(StringName.Extensions, (uint)i);
+                if (ext == s) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+
     public class Program {
+        private static IWindow MainWindow;
+        private static GL OpenGl;
+        private static uint VAO;
+        private static uint VBO;
+        private static uint EBO;
+
+        private const string VertexShader = @"
+            #version 330 core
+
+            layout (location = 0) in vec3 aPosition;
+
+            void main()
+            {
+                gl_Position = vec4(aPosition, 1.0);
+            }";
+
+        private const string FragmentShader = @"
+            #version 330 core
+
+            out vec4 out_color;
+
+            void main()
+            {
+                out_color = vec4(1.0, 0.5, 0.2, 1.0);
+            }";
+
+
         public static void Main(string[] argv) {
-            Profiler.AppInfo("Sample App");
             new Builder()
                 .WithTaskCapacity(64)
                 .WithWorkerCapacity(64)
                 .WithLogHandler(Console.WriteLine)
                 .Build();
 
-            LogUtils.OnLog += System.Console.WriteLine;
-            var source = new int[100];
+            var options = WindowOptions.Default with {
+                Size = new Vector2D<int>(800, 600),
+                Title = "Demo"
+            };
 
-            for (var i = 0; i < 10000; i++) {
-                Console.WriteLine($"Iteration: {i}");
-                using (Profiler.BeginZone("Frame")) {
-                    TaskGraphRunner.Reset();
+            MainWindow = Window.Create(options);
 
-                    var handle = new ResetTask {
-                        A = source
-                    }.ScheduleParallel(100, 20);
+            MainWindow.Load += OnLoad;
+            MainWindow.Update += OnUpdate;
+            MainWindow.Render += OnRender;
+            MainWindow.Run();
+        }
 
-                    _ = new AddTask {
-                        A = source
-                    }.ScheduleParallel(100, 20, handle);
+        private static unsafe void OnLoad() {
+            OpenGl = MainWindow.CreateOpenGL();
+            OpenGl.ClearColor(Color.CornflowerBlue);
+            OpenGl.SupportsSpirv();
 
-                    using (Profiler.BeginZone("TaskGraph Process")) {
-                        TaskGraphRunner.Update();
-                    }
-                    var sum = 0;
-                    foreach (var v in source) {
-                        sum += v;
-                    }
-                    Console.WriteLine($"Sum: {sum}");
-                }
+            VAO = OpenGl.GenVertexArray();
+            OpenGl.BindVertexArray(VAO);
 
-                Profiler.EmitFrameMark();
-            }
+            var vertices = stackalloc float[12] {
+                 0.5f,  0.5f, 0.0f,
+                 0.5f, -0.5f, 0.0f,
+                -0.5f, -0.5f, 0.0f,
+                -0.5f,  0.5f, 0.0f
+            };
 
-            TaskGraphRunner.Shutdown();
+            VBO = OpenGl.GenBuffer();
+            OpenGl.BindBuffer(BufferTargetARB.ArrayBuffer, VBO);
+            OpenGl.BufferData(BufferTargetARB.ArrayBuffer, 12 * sizeof(float), vertices, BufferUsageARB.StaticDraw);
+
+            var indices = stackalloc uint[6] { 0, 1, 3, 1, 2, 3 };
+            EBO = OpenGl.GenBuffer();
+            OpenGl.BindBuffer(BufferTargetARB.ElementArrayBuffer, EBO);
+            OpenGl.BufferData(BufferTargetARB.ElementArrayBuffer, 6 * sizeof(uint), indices, BufferUsageARB.StaticDraw);
+
+            var vert = OpenGl.CreateShader(ShaderType.VertexShader);
+            OpenGl.ShaderSource(vert, VertexShader);
+        }
+
+        private static void OnUpdate(double deltaTime) {
+        }
+
+        private static void OnRender(double deltaTime) {
+            OpenGl.Clear(ClearBufferMask.ColorBufferBit);
         }
     }
 }

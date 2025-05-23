@@ -23,26 +23,6 @@ namespace InitialPrefabs.TaskFlow.Examples {
         }
     }
 
-    public static class OpenGLExtensions {
-        private const string Spirv = "GL_ARB_gl_spirv";
-
-        public static void SupportsSpirv(this GL gl) {
-            Console.WriteLine($"{Spirv} supported: {Contains(gl, Spirv)}");
-        }
-
-        public static bool Contains(this GL gl, string s) {
-            var numExtensions = gl.GetInteger(GLEnum.NumExtensions);
-
-            for (var i = 0; i < numExtensions; i++) {
-                var ext = gl.GetStringS(StringName.Extensions, (uint)i);
-                if (ext == s) {
-                    return true;
-                }
-            }
-            return false;
-        }
-    }
-
     public class Program {
         private static IWindow MainWindow;
         private static GL OpenGl;
@@ -99,21 +79,24 @@ namespace InitialPrefabs.TaskFlow.Examples {
             VAO = OpenGl.GenVertexArray();
             OpenGl.BindVertexArray(VAO);
 
-            var vertices = stackalloc float[12] {
+            Span<float> vertices = [
                  0.5f,  0.5f, 0.0f,
                  0.5f, -0.5f, 0.0f,
                 -0.5f, -0.5f, 0.0f,
                 -0.5f,  0.5f, 0.0f
-            };
+            ];
+            OpenGl.BindBufferData(
+                BufferTargetARB.ArrayBuffer,
+                vertices,
+                BufferUsageARB.StaticDraw,
+                ref VBO);
 
-            VBO = OpenGl.GenBuffer();
-            OpenGl.BindBuffer(BufferTargetARB.ArrayBuffer, VBO);
-            OpenGl.BufferData(BufferTargetARB.ArrayBuffer, 12 * sizeof(float), vertices, BufferUsageARB.StaticDraw);
-
-            var indices = stackalloc uint[6] { 0, 1, 3, 1, 2, 3 };
-            EBO = OpenGl.GenBuffer();
-            OpenGl.BindBuffer(BufferTargetARB.ElementArrayBuffer, EBO);
-            OpenGl.BufferData(BufferTargetARB.ElementArrayBuffer, 6 * sizeof(uint), indices, BufferUsageARB.StaticDraw);
+            Span<uint> indices = [0, 1, 3, 1, 2, 3];
+            OpenGl.BindBufferData(
+                BufferTargetARB.ArrayBuffer,
+                indices,
+                BufferUsageARB.StaticDraw,
+                ref EBO);
 
             var vert = OpenGl.CreateShader(ShaderType.VertexShader);
             OpenGl.ShaderSource(vert, VertexShader);

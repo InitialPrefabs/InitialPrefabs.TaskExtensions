@@ -30,6 +30,8 @@ namespace InitialPrefabs.TaskFlow.Examples {
         private static uint VBO;
         private static uint EBO;
 
+        private static uint ShaderProgram;
+
         private const string VertexShader = @"
             #version 330 core
 
@@ -68,7 +70,15 @@ namespace InitialPrefabs.TaskFlow.Examples {
             MainWindow.Load += OnLoad;
             MainWindow.Update += OnUpdate;
             MainWindow.Render += OnRender;
+            MainWindow.Closing += OnClose;
             MainWindow.Run();
+        }
+
+        private static unsafe void OnClose() {
+            OpenGl.DeleteBuffer(VBO);
+            OpenGl.DeleteBuffer(EBO);
+            OpenGl.DeleteVertexArray(VAO);
+            OpenGl.DeleteShader(ShaderProgram);
         }
 
         private static unsafe void OnLoad() {
@@ -93,20 +103,43 @@ namespace InitialPrefabs.TaskFlow.Examples {
 
             Span<uint> indices = [0, 1, 3, 1, 2, 3];
             OpenGl.BindBufferData(
-                BufferTargetARB.ArrayBuffer,
+                BufferTargetARB.ElementArrayBuffer,
                 indices,
                 BufferUsageARB.StaticDraw,
                 ref EBO);
 
-            var vert = OpenGl.CreateShader(ShaderType.VertexShader);
-            OpenGl.ShaderSource(vert, VertexShader);
+            var vert = OpenGl.CompileAndLoadShader(ShaderType.VertexShader, VertexShader);
+            var frag = OpenGl.CompileAndLoadShader(ShaderType.FragmentShader, FragmentShader);
+
+            ShaderProgram = OpenGl.CreateProgram();
+            OpenGl.AttachShader(ShaderProgram, vert);
+            OpenGl.AttachShader(ShaderProgram, frag);
+            OpenGl.LinkProgram(ShaderProgram);
+
+            OpenGl.GetProgram(ShaderProgram, ProgramPropertyARB.LinkStatus, out var lStatus);
+            if (lStatus != (int)GLEnum.True) {
+                throw new InvalidOperationException($"Failed to create and link the shader program.\n {OpenGl.GetProgramInfoLog(ShaderProgram)}");
+            }
+
+            // Detatch the shader and free the memory
+            OpenGl.DetachShader(ShaderProgram, vert);
+            OpenGl.DetachShader(ShaderProgram, frag);
+            OpenGl.DeleteShader(vert);
+            OpenGl.DeleteShader(frag);
+
+            const int positionLoc = 0;
+            OpenGl.VertexAttribPointer(positionLoc, 3, VertexAttribPointerType.Float, false, 3 * sizeof(float), null);
+            OpenGl.EnableVertexAttribArray(positionLoc);
         }
 
         private static void OnUpdate(double deltaTime) {
         }
 
-        private static void OnRender(double deltaTime) {
+        private static unsafe void OnRender(double deltaTime) {
             OpenGl.Clear(ClearBufferMask.ColorBufferBit);
+            OpenGl.BindVertexArray(VAO);
+            OpenGl.UseProgram(ShaderProgram);
+            OpenGl.DrawElements(PrimitiveType.Triangles, 6, DrawElementsType.UnsignedInt, (void*)0);
         }
     }
 }

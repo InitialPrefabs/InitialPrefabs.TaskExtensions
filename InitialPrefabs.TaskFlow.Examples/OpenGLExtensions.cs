@@ -3,8 +3,22 @@ using System;
 using System.Runtime.InteropServices;
 
 namespace InitialPrefabs.TaskFlow.Examples {
+
     public static class OpenGLExtensions {
         private const string Spirv = "GL_ARB_gl_spirv";
+
+        public static uint CompileAndLoadShader(this GL gl, ShaderType shaderType, string shaderSrc) {
+            var shaderId = gl.CreateShader(shaderType);
+            gl.ShaderSource(shaderId, shaderSrc);
+            gl.CompileShader(shaderId);
+            gl.GetShader(shaderId, ShaderParameterName.CompileStatus, out var status);
+
+            if (status != (int)GLEnum.True) {
+                throw new InvalidOperationException($"Failed to compile: {shaderSrc}");
+            }
+
+            return shaderId;
+        }
 
         public static void SupportsSpirv(this GL gl) {
             Console.WriteLine($"{Spirv} supported: {Contains(gl, Spirv)}");
@@ -18,7 +32,7 @@ namespace InitialPrefabs.TaskFlow.Examples {
             unsafe {
                 identifier = gl.GenBuffer();
                 gl.BindBuffer(bufferTarget, identifier);
-                fixed (T* ptr = data) {
+                fixed (void* ptr = data) {
                     gl.BufferData(bufferTarget, (nuint)(data.Length * Marshal.SizeOf<T>()), ptr, usage);
                 }
             }

@@ -1,5 +1,10 @@
 # Task Extensions
 
+## BETA
+**Check out the `develop` branch for the latest changes to TaskExtensions, now called TaskFlow!**
+
+<details>
+
 Allows you to write `Task` structs by implementing
 
 * `ITask`
@@ -68,3 +73,4 @@ Output:
 ## Future Plans
 * Looking into Task Dependency Handle and TaskQueue
 * Custom control on queuing the Task but not launching it
+</details>

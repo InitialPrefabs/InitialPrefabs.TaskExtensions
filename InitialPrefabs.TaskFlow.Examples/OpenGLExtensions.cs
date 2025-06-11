@@ -13,11 +13,9 @@ namespace InitialPrefabs.TaskFlow.Examples {
             gl.CompileShader(shaderId);
             gl.GetShader(shaderId, ShaderParameterName.CompileStatus, out var status);
 
-            if (status != (int)GLEnum.True) {
-                throw new InvalidOperationException($"Failed to compile: {shaderSrc}");
-            }
-
-            return shaderId;
+            return status != (int)GLEnum.True ?
+                throw new InvalidOperationException($"Failed to compile: {shaderSrc}") :
+                shaderId;
         }
 
         public static void SupportsSpirv(this GL gl) {

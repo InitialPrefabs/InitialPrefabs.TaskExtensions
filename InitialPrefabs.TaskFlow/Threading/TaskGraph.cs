@@ -1,4 +1,5 @@
 ﻿using InitialPrefabs.TaskFlow.Collections;
+using InitialPrefabs.TaskFlow.Utils;
 using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
@@ -275,20 +276,20 @@ namespace InitialPrefabs.TaskFlow.Threading {
 
         [Conditional("DEBUG")]
         public static void PrintAdjacencyMatrix(Span<byte> adjacencyMatrix, int taskCount) {
-            Console.Write("    ");
+            LogUtils.Emit("    ");
             for (var col = 0; col < taskCount; col++) {
                 Console.Write($"{col,3} ");
             }
-            Console.WriteLine();
-            Console.WriteLine("   +" + new string('-', taskCount * 4));
+            LogUtils.EmitLine();
+            LogUtils.Emit("   +" + new string('-', taskCount * 4));
 
             for (var row = 0; row < taskCount; row++) {
-                Console.Write($"{row,2} |"); // Row index
+                LogUtils.Emit($"{row,2} |"); // Row index
                 for (var col = 0; col < taskCount; col++) {
                     var index = (row * taskCount) + col; // Convert 2D index to 1D
-                    Console.Write($" {adjacencyMatrix[index],2} ");
+                    LogUtils.Emit($" {adjacencyMatrix[index],2} ");
                 }
-                Console.WriteLine();
+                LogUtils.EmitLine();
             }
         }
     }

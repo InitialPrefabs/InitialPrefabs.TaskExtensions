@@ -33,6 +33,10 @@ namespace InitialPrefabs.TaskFlow.Utils {
         public static void Emit(string msg) {
             LogHandler?.Invoke(msg);
         }
+
+        internal static void EmitLine() {
+            LogHandler?.Invoke("\n");
+        }
     }
 }
 

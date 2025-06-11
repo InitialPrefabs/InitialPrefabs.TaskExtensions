@@ -1,5 +1,4 @@
 ﻿using InitialPrefabs.TaskFlow.Threading;
-using InitialPrefabs.TaskFlow.Utils;
 using Silk.NET.Maths;
 using Silk.NET.OpenGL;
 using Silk.NET.Windowing;
@@ -99,7 +98,6 @@ namespace InitialPrefabs.TaskFlow.Examples {
             Texture.Bind(TextureUnit.Texture0);
             //Setting a uniform.
             Shader.SetUniform("uTexture", 0);
-            LogUtils.Emit($"Indices Length: {Indices.Length}");
             OpenGl.DrawElements(PrimitiveType.Triangles, Indices.Length, DrawElementsType.UnsignedInt, null);
         }
     }

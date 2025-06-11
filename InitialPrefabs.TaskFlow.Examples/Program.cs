@@ -1,4 +1,5 @@
 ﻿using InitialPrefabs.TaskFlow.Threading;
+using InitialPrefabs.TaskFlow.Utils;
 using Silk.NET.Maths;
 using Silk.NET.OpenGL;
 using Silk.NET.Windowing;
@@ -26,32 +27,12 @@ namespace InitialPrefabs.TaskFlow.Examples {
     public class Program {
         private static IWindow MainWindow;
         private static GL OpenGl;
-        private static uint VAO;
-        private static uint VBO;
-        private static uint EBO;
 
-        private static uint ShaderProgram;
-
-        private const string VertexShader = @"
-            #version 330 core
-
-            layout (location = 0) in vec3 aPosition;
-
-            void main()
-            {
-                gl_Position = vec4(aPosition, 1.0);
-            }";
-
-        private const string FragmentShader = @"
-            #version 330 core
-
-            out vec4 out_color;
-
-            void main()
-            {
-                out_color = vec4(1.0, 0.5, 0.2, 1.0);
-            }";
-
+        private static BufferObject<float> Vertices;
+        private static BufferObject<uint> Indices;
+        private static VertexArrayObject<float, uint> VAO;
+        private static Shader Shader;
+        private static Texture Texture;
 
         public static void Main(string[] argv) {
             new Builder()
@@ -75,71 +56,51 @@ namespace InitialPrefabs.TaskFlow.Examples {
         }
 
         private static unsafe void OnClose() {
-            OpenGl.DeleteBuffer(VBO);
-            OpenGl.DeleteBuffer(EBO);
-            OpenGl.DeleteVertexArray(VAO);
-            OpenGl.DeleteShader(ShaderProgram);
+            Vertices.Dispose();
+            Indices.Dispose();
+            VAO.Dispose();
+            Shader.Dispose();
+            Texture.Dispose();
         }
 
         private static unsafe void OnLoad() {
-            OpenGl = MainWindow.CreateOpenGL();
+            OpenGl = GL.GetApi(MainWindow);
             OpenGl.ClearColor(Color.CornflowerBlue);
-            OpenGl.SupportsSpirv();
-
-            VAO = OpenGl.GenVertexArray();
-            OpenGl.BindVertexArray(VAO);
 
             Span<float> vertices = [
-                 0.5f,  0.5f, 0.0f,
-                 0.5f, -0.5f, 0.0f,
-                -0.5f, -0.5f, 0.0f,
-                -0.5f,  0.5f, 0.0f
+                //X    Y      Z     S    T
+                 0.5f,  0.5f, 0.0f, 1.0f, 0.0f,
+                 0.5f, -0.5f, 0.0f, 1.0f, 1.0f,
+                -0.5f, -0.5f, 0.0f, 0.0f, 1.0f,
+                -0.5f,  0.5f, 0.5f, 0.0f, 0.0f
             ];
-            OpenGl.BindBufferData(
-                BufferTargetARB.ArrayBuffer,
-                vertices,
-                BufferUsageARB.StaticDraw,
-                ref VBO);
-
             Span<uint> indices = [0, 1, 3, 1, 2, 3];
-            OpenGl.BindBufferData(
-                BufferTargetARB.ElementArrayBuffer,
-                indices,
-                BufferUsageARB.StaticDraw,
-                ref EBO);
 
-            var vert = OpenGl.CompileAndLoadShader(ShaderType.VertexShader, VertexShader);
-            var frag = OpenGl.CompileAndLoadShader(ShaderType.FragmentShader, FragmentShader);
+            Vertices = new BufferObject<float>(OpenGl, vertices, BufferTargetARB.ArrayBuffer);
+            Indices = new BufferObject<uint>(OpenGl, indices, BufferTargetARB.ElementArrayBuffer);
+            VAO = new VertexArrayObject<float, uint>(OpenGl, Vertices, Indices);
+            VAO
+                .VertexAttributePointer(0, 3, VertexAttribPointerType.Float, 5, 0)
+                .VertexAttributePointer(1, 2, VertexAttribPointerType.Float, 5, 3);
+            Shader = new Shader(OpenGl,
+                "InitialPrefabs.TaskFlow.Examples/shaders/vert.glsl",
+                "InitialPrefabs.TaskFlow.Examples/shaders/frag.glsl");
 
-            ShaderProgram = OpenGl.CreateProgram();
-            OpenGl.AttachShader(ShaderProgram, vert);
-            OpenGl.AttachShader(ShaderProgram, frag);
-            OpenGl.LinkProgram(ShaderProgram);
-
-            OpenGl.GetProgram(ShaderProgram, ProgramPropertyARB.LinkStatus, out var lStatus);
-            if (lStatus != (int)GLEnum.True) {
-                throw new InvalidOperationException($"Failed to create and link the shader program.\n {OpenGl.GetProgramInfoLog(ShaderProgram)}");
-            }
-
-            // Detatch the shader and free the memory
-            OpenGl.DetachShader(ShaderProgram, vert);
-            OpenGl.DetachShader(ShaderProgram, frag);
-            OpenGl.DeleteShader(vert);
-            OpenGl.DeleteShader(frag);
-
-            const int positionLoc = 0;
-            OpenGl.VertexAttribPointer(positionLoc, 3, VertexAttribPointerType.Float, false, 3 * sizeof(float), null);
-            OpenGl.EnableVertexAttribArray(positionLoc);
+            Texture = new Texture(OpenGl, "InitialPrefabs.TaskFlow.Examples/shaders/silk.png");
         }
 
-        private static void OnUpdate(double deltaTime) {
-        }
+        private static void OnUpdate(double deltaTime) { }
 
         private static unsafe void OnRender(double deltaTime) {
             OpenGl.Clear(ClearBufferMask.ColorBufferBit);
-            OpenGl.BindVertexArray(VAO);
-            OpenGl.UseProgram(ShaderProgram);
-            OpenGl.DrawElements(PrimitiveType.Triangles, 6, DrawElementsType.UnsignedInt, (void*)0);
+            VAO.Bind();
+            Shader.Use();
+
+            Texture.Bind(TextureUnit.Texture0);
+            //Setting a uniform.
+            Shader.SetUniform("uTexture", 0);
+            LogUtils.Emit($"Indices Length: {Indices.Length}");
+            OpenGl.DrawElements(PrimitiveType.Triangles, Indices.Length, DrawElementsType.UnsignedInt, null);
         }
     }
 }

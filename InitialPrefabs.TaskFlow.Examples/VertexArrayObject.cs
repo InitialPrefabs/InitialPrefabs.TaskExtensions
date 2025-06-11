@@ -8,10 +8,13 @@ namespace InitialPrefabs.TaskFlow.Examples {
         private readonly uint handle;
         private readonly GL gl;
 
-        public VertexArrayObject(GL gl, BufferObject<TVertexType> vbo, BufferObject<TIndexType> ebo) {
+        public VertexArrayObject(GL gl, BufferObject<TVertexType> vertexBuffer, BufferObject<TIndexType> indexBuffer) {
             this.gl = gl;
             handle = gl.GenVertexArray();
 
+            Bind();
+            vertexBuffer.Bind();
+            indexBuffer.Bind();
         }
 
         public readonly VertexArrayObject<TVertexType, TIndexType> VertexAttributePointer(uint index, int count, VertexAttribPointerType type, uint vertexSize, int offSet) {
